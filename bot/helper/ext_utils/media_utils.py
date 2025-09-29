@@ -126,7 +126,7 @@ async def take_ss(video_file, ss_nb) -> bool:
         for i in range(ss_nb):
             output = f"{dirpath}/SS.{name}_{i:02}.png"
             cmd = [
-                "ffmpeg",
+                "xtra",
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -169,7 +169,7 @@ async def get_audio_thumbnail(audio_file):
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
     cmd = [
-        "ffmpeg",
+        "xtra",
         "-hide_banner",
         "-loglevel",
         "error",
@@ -207,7 +207,7 @@ async def get_video_thumbnail(video_file, duration):
         duration = 3
     duration = duration // 2
     cmd = [
-        "ffmpeg",
+        "xtra",
         "-hide_banner",
         "-loglevel",
         "error",
@@ -250,7 +250,7 @@ async def get_multiple_frames_thumbnail(video_file, layout, keep_screenshots):
     await makedirs(output_dir, exist_ok=True)
     output = ospath.join(output_dir, f"{time()}.jpg")
     cmd = [
-        "ffmpeg",
+        "xtra",
         "-hide_banner",
         "-loglevel",
         "error",
@@ -432,7 +432,7 @@ class FFMpeg:
         output = f"{base_name}.{ext}"
         if retry:
             cmd = [
-                "ffmpeg",
+                "xtra",
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -458,7 +458,7 @@ class FFMpeg:
                 cmd[14:14] = ["-c:s", "copy"]
         else:
             cmd = [
-                "ffmpeg",
+                "xtra",
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -509,7 +509,7 @@ class FFMpeg:
         base_name = ospath.splitext(audio_file)[0]
         output = f"{base_name}.{ext}"
         cmd = [
-            "ffmpeg",
+            "xtra",
             "-hide_banner",
             "-loglevel",
             "error",
@@ -579,7 +579,7 @@ class FFMpeg:
         filter_complex += f"concat=n={len(segments)}:v=1:a=1[vout][aout]"
 
         cmd = [
-            "ffmpeg",
+            "xtra",
             "-hide_banner",
             "-loglevel",
             "error",
@@ -640,7 +640,7 @@ class FFMpeg:
         while i <= parts or start_time < duration - 4:
             out_path = f_path.replace(file_, f"{base_name}.part{i:03}{extension}")
             cmd = [
-                "ffmpeg",
+                "xtra",
                 "-hide_banner",
                 "-loglevel",
                 "error",

@@ -4,7 +4,7 @@ from pyrogram.handlers import MessageHandler, CallbackQueryHandler, EditedMessag
 from ..modules import *
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.filters import CustomFilters
-from .mltb_client import TgClient
+from .nuwa_client import TgClient
 
 
 def add_handlers():

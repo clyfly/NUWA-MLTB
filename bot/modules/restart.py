@@ -13,7 +13,7 @@ from ..helper.telegram_helper.message_utils import (
 from ..helper.ext_utils.db_handler import database
 from ..helper.ext_utils.files_utils import clean_all
 from ..helper.telegram_helper.button_build import ButtonMaker
-from ..core.mltb_client import TgClient
+from ..core.nuwa_client import TgClient
 from ..core.config_manager import Config
 from ..core.jdownloader_booter import jdownloader
 from ..core.torrent_manager import TorrentManager
@@ -23,7 +23,7 @@ from ..core.torrent_manager import TorrentManager
 async def restart_bot(_, message):
     buttons = ButtonMaker()
     buttons.data_button("Yes!", "botrestart confirm")
-    buttons.data_button("Cancel", "botrestart cancel")
+    buttons.data_button("No!", "botrestart cancel")
     button = buttons.build_menu(2)
     await send_message(message, "Are you sure you want to restart the bot ?!", button)
 
@@ -127,7 +127,7 @@ async def confirm_restart(_, query):
             "pkill",
             "-9",
             "-f",
-            "gunicorn|aria2c|qbittorrent-nox|ffmpeg|rclone|java|sabnzbdplus|7z|split",
+            "gunicorn|xria|xnox|xtra|xone|java|xnzb|7z|split",
         )
         proc2 = await create_subprocess_exec("python3", "update.py")
         await gather(proc1.wait(), proc2.wait())

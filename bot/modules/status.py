@@ -65,7 +65,7 @@ async def get_download_status(download):
     if tool in [
         "telegram",
         "yt-dlp",
-        "rclone",
+        "xone",
         "gDriveApi",
     ]:
         speed = download.speed()

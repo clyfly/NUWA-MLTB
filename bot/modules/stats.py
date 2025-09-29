@@ -18,13 +18,13 @@ from ..helper.ext_utils.bot_utils import cmd_exec, new_task
 from ..helper.telegram_helper.message_utils import send_message
 
 commands = {
-    "aria2": (["aria2c", "--version"], r"aria2 version ([\d.]+)"),
-    "qBittorrent": (["qbittorrent-nox", "--version"], r"qBittorrent v([\d.]+)"),
-    "SABnzbd+": (["sabnzbdplus", "--version"], r"sabnzbdplus-([\d.]+)"),
+    "aria2": (["xria", "--version"], r"aria2 version ([\d.]+)"),
+    "qBittorrent": (["xnox", "--version"], r"qBittorrent v([\d.]+)"),
+    "SABnzbd+": (["xnzb", "--version"], r"sabnzbdplus-([\d.]+)"),
     "python": (["python3", "--version"], r"Python ([\d.]+)"),
-    "rclone": (["rclone", "--version"], r"rclone v([\d.]+)"),
+    "rclone": (["xone", "--version"], r"rclone v([\d.]+)"),
     "yt-dlp": (["yt-dlp", "--version"], r"([\d.]+)"),
-    "ffmpeg": (["ffmpeg", "-version"], r"ffmpeg version ([\d.]+(-\w+)?).*"),
+    "ffmpeg": (["xtra", "-version"], r"ffmpeg version ([\d.]+(-\w+)?).*"),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
 }
 

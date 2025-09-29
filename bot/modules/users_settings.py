@@ -315,7 +315,7 @@ YT-DLP Options is <code>{ytopt}</code>
 
 FFMPEG Commands is <b>{ffc}</b>"""
 
-    return text, buttons.build_menu(1)
+    return text, buttons.build_menu(2)
 
 
 async def update_user_settings(query, stype="main"):

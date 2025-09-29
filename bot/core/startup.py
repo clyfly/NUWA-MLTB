@@ -21,7 +21,7 @@ from .. import (
 )
 from ..helper.ext_utils.db_handler import database
 from .config_manager import Config
-from .mltb_client import TgClient
+from .nuwa_client import TgClient
 from .torrent_manager import TorrentManager
 
 
@@ -234,14 +234,14 @@ async def load_configurations():
 
     await (
         await create_subprocess_shell(
-            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x aria-nox-nzb.sh && ./aria-nox-nzb.sh"
+            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x x-pkg.sh && ./x-pkg.sh"
         )
     ).wait()
 
-    if Config.BASE_URL:
-        await create_subprocess_shell(
-            f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{Config.BASE_URL_PORT}"
-        )
+    PORT = int(environ.get("PORT") or environ.get("BASE_URL_PORT") or "80")
+    await create_subprocess_shell(
+        f"gunicorn -k uvicorn.workers.UvicornWorker -w 1 web.wserver:app --bind 0.0.0.0:{PORT}",
+    )
 
     if await aiopath.exists("cfg.zip"):
         if await aiopath.exists("/JDownloader/cfg"):

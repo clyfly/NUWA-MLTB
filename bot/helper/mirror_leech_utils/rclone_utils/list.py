@@ -258,7 +258,7 @@ class RcloneList:
         elif itype:
             self.item_type = itype
         cmd = [
-            "rclone",
+            "xone",
             "lsjson",
             self.item_type,
             "--fast-list",

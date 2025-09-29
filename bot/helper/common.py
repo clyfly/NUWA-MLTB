@@ -21,7 +21,7 @@ from .. import (
     DOWNLOAD_DIR,
 )
 from ..core.config_manager import Config
-from ..core.mltb_client import TgClient
+from ..core.nuwa_client import TgClient
 from .ext_utils.bot_utils import new_task, sync_to_async, get_size_bytes
 from .ext_utils.bulk_links import extract_bulk_links
 from .mirror_leech_utils.gdrive_utils.list import GoogleDriveList
@@ -663,7 +663,7 @@ class TaskConfig:
             for ffmpeg_cmd in cmds:
                 self.proceed_count = 0
                 cmd = [
-                    "ffmpeg",
+                    "xtra",
                     "-hide_banner",
                     "-loglevel",
                     "error",

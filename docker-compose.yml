@@ -1,6 +1,0 @@
-services:
-  app:
-    build: .
-    command: bash start.sh
-    restart: on-failure
-    network_mode: "host"
