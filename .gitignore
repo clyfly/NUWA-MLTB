@@ -1,4 +1,4 @@
-xenv/*
+venv/*
 config.py
 token.pickle
 rclone.conf
