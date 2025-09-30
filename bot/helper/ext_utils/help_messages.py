@@ -394,40 +394,56 @@ Sini gue jelasin cara pake mltb.* yang referensi ke file yang lo mau kerjain.
 
 help_string = f"""
 CATATAN: Coba setiap command tanpa argumen apa pun buat liat detail lebih lanjut.
-/{BotCommands.MirrorCommand[0]} atau /{BotCommands.MirrorCommand[1]}: Mulai mirroring ke cloud.
-/{BotCommands.QbMirrorCommand[0]} atau /{BotCommands.QbMirrorCommand[1]}: Mulai Mirroring ke cloud pake qBittorrent.
-/{BotCommands.JdMirrorCommand[0]} atau /{BotCommands.JdMirrorCommand[1]}: Mulai Mirroring ke cloud pake JDownloader.
-/{BotCommands.NzbMirrorCommand[0]} atau /{BotCommands.NzbMirrorCommand[1]}: Mulai Mirroring ke cloud pake Sabnzbd.
-/{BotCommands.YtdlCommand[0]} atau /{BotCommands.YtdlCommand[1]}: Mirror link yang didukung yt-dlp.
-/{BotCommands.LeechCommand[0]} atau /{BotCommands.LeechCommand[1]}: Mulai leeching ke Telegram.
-/{BotCommands.QbLeechCommand[0]} atau /{BotCommands.QbLeechCommand[1]}: Mulai leeching pake qBittorrent.
-/{BotCommands.JdLeechCommand[0]} atau /{BotCommands.JdLeechCommand[1]}: Mulai leeching pake JDownloader.
-/{BotCommands.NzbLeechCommand[0]} atau /{BotCommands.NzbLeechCommand[1]}: Mulai leeching pake Sabnzbd.
-/{BotCommands.YtdlLeechCommand[0]} atau /{BotCommands.YtdlLeechCommand[1]}: Leech link yang didukung yt-dlp.
-/{BotCommands.CloneCommand} [drive_url]: Copy file/folder ke Google Drive.
-/{BotCommands.CountCommand} [drive_url]: Hitung file/folder dari Google Drive.
-/{BotCommands.DeleteCommand} [drive_url]: Hapus file/folder dari Google Drive (Cuma Owner & Sudo).
-/{BotCommands.UserSetCommand[0]} atau /{BotCommands.UserSetCommand[1]} [query]: Pengaturan User.
-/{BotCommands.BotSetCommand[0]} atau /{BotCommands.BotSetCommand[1]} [query]: Pengaturan Bot.
-/{BotCommands.SelectCommand}: Pilih file dari torrents atau nzb oleh gid atau reply.
-/{BotCommands.CancelTaskCommand[0]} atau /{BotCommands.CancelTaskCommand[1]} [gid]: Batalkan task oleh gid atau reply.
-/{BotCommands.ForceStartCommand[0]} atau /{BotCommands.ForceStartCommand[1]} [gid]: Paksa mulai task oleh gid atau reply.
-/{BotCommands.CancelAllCommand} [query]: Batalkan semua task [status].
-/{BotCommands.ListCommand} [query]: Cari di Google Drive(s).
-/{BotCommands.SearchCommand} [query]: Cari torrents dengan API.
-/{BotCommands.StatusCommand]: Nampilin status semua download.
-/{BotCommands.StatsCommand]: Nampilin stats mesin tempat bot dihost.
-/{BotCommands.PingCommand]: Cek berapa lama buat Ping Bot (Cuma Owner & Sudo).
-/{BotCommands.AuthorizeCommand]: Otorisasi chat atau user buat pake bot (Cuma Owner & Sudo).
-/{BotCommands.UnAuthorizeCommand]: Hapus otorisasi chat atau user buat pake bot (Cuma Owner & Sudo).
-/{BotCommands.UsersCommand]: nampilin pengaturan user (Cuma Owner & Sudo).
-/{BotCommands.AddSudoCommand]: Tambah user sudo (Cuma Owner).
-/{BotCommands.RmSudoCommand]: Hapus user sudo (Cuma Owner).
-/{BotCommands.RestartCommand]: Restart dan update bot (Cuma Owner & Sudo).
-/{BotCommands.LogCommand]: Dapat file log bot. Berguna buat laporan crash (Cuma Owner & Sudo).
-/{BotCommands.ShellCommand]: Jalankan perintah shell (Cuma Owner).
-/{BotCommands.AExecCommand]: Exec fungsi async (Cuma Owner).
-/{BotCommands.ExecCommand]: Exec fungsi sync (Cuma Owner).
-/{BotCommands.ClearLocalsCommand]: Hapus lokal {BotCommands.AExecCommand} atau {BotCommands.ExecCommand} (Cuma Owner).
-/{BotCommands.RssCommand]: Menu RSS.
+
+─── ✦ MIRRORING ✦ ───
+/{BotCommands.MirrorCommand[0]} atau /{BotCommands.MirrorCommand[1]} : Mulai mirroring ke cloud
+/{BotCommands.QbMirrorCommand[0]} atau /{BotCommands.QbMirrorCommand[1]} : Mirroring pake qBittorrent
+/{BotCommands.JdMirrorCommand[0]} atau /{BotCommands.JdMirrorCommand[1]} : Mirroring pake JDownloader
+/{BotCommands.NzbMirrorCommand[0]} atau /{BotCommands.NzbMirrorCommand[1]} : Mirroring pake Sabnzbd
+/{BotCommands.YtdlCommand[0]} atau /{BotCommands.YtdlCommand[1]} : Mirroring link yt-dlp
+
+─── ✦ LEECHING ✦ ───
+/{BotCommands.LeechCommand[0]} atau /{BotCommands.LeechCommand[1]} : Leeching ke Telegram
+/{BotCommands.QbLeechCommand[0]} atau /{BotCommands.QbLeechCommand[1]} : Leeching pake qBittorrent
+/{BotCommands.JdLeechCommand[0]} atau /{BotCommands.JdLeechCommand[1]} : Leeching pake JDownloader
+/{BotCommands.NzbLeechCommand[0]} atau /{BotCommands.NzbLeechCommand[1]} : Leeching pake Sabnzbd
+/{BotCommands.YtdlLeechCommand[0]} atau /{BotCommands.YtdlLeechCommand[1]} : Leeching link yt-dlp
+
+─── ✦ GOOGLE DRIVE ✦ ───
+/{BotCommands.CloneCommand} [drive_url] : Copy file/folder ke Google Drive
+/{BotCommands.CountCommand} [drive_url] : Hitung file/folder dari Google Drive
+/{BotCommands.DeleteCommand} [drive_url] : Hapus file/folder dari Google Drive (Owner & Sudo)
+
+─── ✦ PENGATURAN ✦ ───
+/{BotCommands.UserSetCommand[0]} atau /{BotCommands.UserSetCommand[1]} [query] : Pengaturan User
+/{BotCommands.BotSetCommand[0]} atau /{BotCommands.BotSetCommand[1]} [query] : Pengaturan Bot
+
+─── ✦ TASK CONTROL ✦ ───
+/{BotCommands.SelectCommand} : Pilih file dari torrents/nzb
+/{BotCommands.CancelTaskCommand[0]} atau /{BotCommands.CancelTaskCommand[1]} [gid] : Batalkan task
+/{BotCommands.ForceStartCommand[0]} atau /{BotCommands.ForceStartCommand[1]} [gid] : Paksa mulai task
+/{BotCommands.CancelAllCommand} [query] : Batalkan semua task [status]
+
+─── ✦ SEARCH & STATUS ✦ ───
+/{BotCommands.ListCommand} [query] : Cari di Google Drive(s)
+/{BotCommands.SearchCommand} [query] : Cari torrents dengan API
+/{BotCommands.StatusCommand} : Status semua download
+/{BotCommands.StatsCommand} : Stats mesin host
+/{BotCommands.PingCommand} : Cek ping bot (Owner & Sudo)
+
+─── ✦ AUTH & ADMIN ✦ ───
+/{BotCommands.AuthorizeCommand} : Otorisasi chat/user (Owner & Sudo)
+/{BotCommands.UnAuthorizeCommand} : Hapus otorisasi chat/user (Owner & Sudo)
+/{BotCommands.UsersCommand} : Tampilkan pengaturan user (Owner & Sudo)
+/{BotCommands.AddSudoCommand} : Tambah user sudo (Owner)
+/{BotCommands.RmSudoCommand} : Hapus user sudo (Owner)
+
+─── ✦ SYSTEM ✦ ───
+/{BotCommands.RestartCommand} : Restart & update bot (Owner & Sudo)
+/{BotCommands.LogCommand} : Dapatkan file log bot (Owner & Sudo)
+/{BotCommands.ShellCommand} : Jalankan perintah shell (Owner)
+/{BotCommands.AExecCommand} : Exec fungsi async (Owner)
+/{BotCommands.ExecCommand} : Exec fungsi sync (Owner)
+/{BotCommands.ClearLocalsCommand} : Hapus lokal exec (Owner)
+/{BotCommands.RssCommand} : Menu RSS
 """
