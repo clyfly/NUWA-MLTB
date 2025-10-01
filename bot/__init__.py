@@ -29,7 +29,7 @@ bot_loop = new_event_loop()
 set_event_loop(bot_loop)
 
 basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s",
     handlers=[FileHandler("log.txt"), StreamHandler()],
     level=INFO,
 )
