@@ -65,6 +65,7 @@ class YoutubeDLHelper:
             "trim_file_name": 220,
             "fragment_retries": 10,
             "retries": 10,
+            "ffmpeg_location": "/bin/xtra",
             "retry_sleep_functions": {
                 "http": lambda n: 3,
                 "fragment": lambda n: 3,
