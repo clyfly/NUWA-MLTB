@@ -94,11 +94,10 @@ class GoogleDriveSearch(GoogleDriveHelper):
             return {"files": []}
 
     def drive_list(self, file_name, target_id="", user_id=""):
-        msg = ""
-        file_name = self.escapes(str(file_name))
         contents_no = 0
         telegraph_content = []
         Title = False
+        has_results = False
 
         if target_id.startswith("mtp:"):
             drives = self.get_user_drive(target_id, user_id)
@@ -121,6 +120,26 @@ class GoogleDriveSearch(GoogleDriveHelper):
 
         self.service = self.authorize()
 
+        # Cek dulu apakah ada hasil
+        for drive_name, dir_id, index_url in drives:
+            isRecur = (
+                False if self._is_recursive and len(dir_id) > 23 else self._is_recursive
+            )
+            response = self._drive_query(dir_id, file_name, isRecur)
+            if response["files"]:
+                has_results = True
+                break
+            if self._no_multi:
+                break
+
+        # Jika tidak ada hasil, return kosong
+        if not has_results:
+            return [], 0
+
+        # Header image hanya ditambahkan jika ada hasil
+        msg = f'<img src="https://i.pinimg.com/736x/9f/76/95/9f76951599947bb26da66feb7cb1e5fa.jpg" alt="RBIE-MLTB" width="700"><br><br>'
+
+        # Ulangi pencarian untuk build message
         for drive_name, dir_id, index_url in drives:
             isRecur = (
                 False if self._is_recursive and len(dir_id) > 23 else self._is_recursive
