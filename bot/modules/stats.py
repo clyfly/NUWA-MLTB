@@ -20,11 +20,11 @@ from ..helper.telegram_helper.message_utils import send_message
 commands = {
     "aria2": (["xria", "--version"], r"aria2 version ([\d.]+)"),
     "qBittorrent": (["xnox", "--version"], r"qBittorrent v([\d.]+)"),
-    "SABnzbd+": (["xnzb", "--version"], r"sabnzbdplus-([\d.]+)"),
+    "SABnzbd+": (["xnzb", "--version"], r"xnzb-([\d.]+)"),
     "python": (["python3", "--version"], r"Python ([\d.]+)"),
     "rclone": (["xone", "--version"], r"rclone v([\d.]+)"),
     "yt-dlp": (["yt-dlp", "--version"], r"([\d.]+)"),
-    "ffmpeg": (["xtra", "-version"], r"ffmpeg version ([\d.]+(-\w+)?).*"),
+    "ffmpeg": (["xtra", "-version"], r"ffmpeg version\s+n?(\d+\.\d+\.\d+-\d+)"),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
 }
 
