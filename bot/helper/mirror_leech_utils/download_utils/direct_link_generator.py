@@ -599,13 +599,15 @@ def onedrive(link):
 
 
 def pixeldrain(url):
+    splitted_url = url.rstrip("/").split("/")
     try:
-        url = url.rstrip("/")
-        code = url.split("/")[-1].split("?", 1)[0]
-        response = get("https://pd.cybar.xyz/", allow_redirects=True)
-        return response.url + code
+        code = splitted_url[-1].split("?", 1)[0]
+        if not code:
+            raise DirectDownloadLinkException("ERROR: Pixeldrain file code not found")
+        bypass_url = f"https://proxy1.pixeldrainbypass.org/download/{code}"
+        return bypass_url
     except Exception as e:
-        raise DirectDownloadLinkException("ERROR: Direct link not found")
+        raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}") from e
 
 
 def streamtape(url):
