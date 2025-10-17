@@ -39,6 +39,7 @@ leech_options = [
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL"]
+gofile_options = ["GOFILE_API_TOKEN"]
 
 
 async def get_user_settings(from_user, stype="main"):
@@ -237,10 +238,23 @@ Gdrive Token <b>{tokenmsg}</b>
 Gdrive ID is <code>{gdrive_id}</code>
 Index URL is <code>{index}</code>
 Stop Duplicate is <b>{sd_msg}</b>"""
+    elif stype == "gofile":
+        buttons.data_button("Gofile API Token", f"userset {user_id} menu GOFILE_API_TOKEN")
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+        if user_dict.get("GOFILE_API_TOKEN", False):
+            gofile_token = "Exists"
+        elif Config.GOFILE_API_TOKEN:
+            gofile_token = "Exists"
+        else:
+            gofile_token = "Not Exists"
+        text = f"""<u>Gofile API Settings for {name}</u>
+Gofile API Token <b>{gofile_token}</b>"""
     else:
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
+        buttons.data_button("Gofile API", f"userset {user_id} gofile")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
         if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
@@ -254,10 +268,20 @@ Stop Duplicate is <b>{sd_msg}</b>"""
             default_upload = user_dict["DEFAULT_UPLOAD"]
         elif "DEFAULT_UPLOAD" not in user_dict:
             default_upload = Config.DEFAULT_UPLOAD
-        du = "Gdrive API" if default_upload == "gd" else "Rclone"
-        dur = "Gdrive API" if default_upload != "gd" else "Rclone"
+        if default_upload == "rc":
+            du = "Rclone"
+            dur = "Gdrive"
+            dv = "gd"
+        elif default_upload == "gd":
+            du = "Gdrive"
+            dur = "Gofile"
+            dv = "gf"
+        else:
+            du = "Gofile"
+            dur = "Rclone"
+            dv = "rc"
         buttons.data_button(
-            f"Upload using {dur}", f"userset {user_id} {default_upload}"
+            f"Upload using {dur}", f"userset {user_id} {dv}"
         )
 
         user_tokens = user_dict.get("USER_TOKENS", False)
@@ -406,6 +430,8 @@ async def set_option(_, message, option):
             value.append(x.strip().lower())
     elif option == "INDEX_URL":
         value = value
+    elif option == "GOFILE_API_TOKEN":
+        pass
     elif option in ["UPLOAD_PATHS", "FFMPEG_CMDS", "YT_DLP_OPTIONS"]:
         if value.startswith("{") and value.endswith("}"):
             try:
@@ -456,8 +482,12 @@ async def get_menu(option, message, user_id):
         back_to = "rclone"
     elif option in gdrive_options:
         back_to = "gdrive"
+    elif option in gofile_options:
+        back_to = "gofile"
     else:
         back_to = "back"
+    if option == "GOFILE_API_TOKEN":
+        key = "set"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
     buttons.data_button("Close", f"userset {user_id} close")
     text = f"Edit menu for: {option}"
@@ -577,7 +607,7 @@ async def edit_user_settings(client, query):
         await query.answer("Not Yours!", show_alert=True)
     elif data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "gofile"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":
@@ -692,10 +722,9 @@ async def edit_user_settings(client, query):
             with BytesIO(msg_ecd) as ofile:
                 ofile.name = "users_settings.txt"
                 await send_file(message, ofile)
-    elif data[2] in ["gd", "rc"]:
+    elif data[2] in ["gd", "rc", "gf"]:
         await query.answer()
-        du = "rc" if data[2] == "gd" else "gd"
-        update_user_ldata(user_id, "DEFAULT_UPLOAD", du)
+        update_user_ldata(user_id, "DEFAULT_UPLOAD", data[2])
         await update_user_settings(query)
         await database.update_user_data(user_id)
     elif data[2] == "back":

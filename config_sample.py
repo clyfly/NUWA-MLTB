@@ -24,6 +24,7 @@ FFMPEG_CMDS = {}
 UPLOAD_PATHS = {}
 # GDrive Tools
 GDRIVE_ID = ""
+GOFILE_API_TOKEN = ""
 IS_TEAM_DRIVE = False
 STOP_DUPLICATE = False
 INDEX_URL = ""

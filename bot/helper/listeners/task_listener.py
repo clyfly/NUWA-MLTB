@@ -39,7 +39,9 @@ from ..mirror_leech_utils.status_utils.gdrive_status import GoogleDriveStatus
 from ..mirror_leech_utils.status_utils.queue_status import QueueStatus
 from ..mirror_leech_utils.status_utils.rclone_status import RcloneStatus
 from ..mirror_leech_utils.status_utils.telegram_status import TelegramStatus
+from ..mirror_leech_utils.status_utils.gofile_status import GofileStatus
 from ..mirror_leech_utils.telegram_uploader import TelegramUploader
+from ..mirror_leech_utils.gofile_uploader import GofileUploader
 from ..telegram_helper.button_build import ButtonMaker
 from ..telegram_helper.message_utils import (
     send_message,
@@ -274,6 +276,11 @@ class TaskListener(TaskConfig):
 
         self.size = await get_path_size(up_dir)
 
+        if not self.up_dest and self.user_dict.get('DEFAULT_UPLOAD'):
+            self.up_dest = self.user_dict['DEFAULT_UPLOAD']
+        elif not self.up_dest:
+            self.up_dest = Config.DEFAULT_UPLOAD
+
         if self.is_leech:
             LOGGER.info(f"Leech Name: {self.name}")
             tg = TelegramUploader(self, up_dir)
@@ -284,7 +291,7 @@ class TaskListener(TaskConfig):
                 tg.upload(),
             )
             del tg
-        elif is_gdrive_id(self.up_dest):
+        elif self.up_dest == 'gd' or is_gdrive_id(self.up_dest):
             LOGGER.info(f"Gdrive Upload Name: {self.name}")
             drive = GoogleDriveUpload(self, up_path)
             async with task_dict_lock:
@@ -294,6 +301,20 @@ class TaskListener(TaskConfig):
                 sync_to_async(drive.upload),
             )
             del drive
+        elif self.up_dest.startswith("gf"):
+            LOGGER.info(f"Gofile Upload Name: {self.name}")
+            if ":" in self.up_dest:
+                gofile_token = self.up_dest.split(":", 1)[1]
+            else:
+                gofile_token = self.user_dict.get('GOFILE_API_TOKEN') or Config.GOFILE_API_TOKEN
+            gofile_up = GofileUploader(self, up_path, gofile_token)
+            async with task_dict_lock:
+                task_dict[self.mid] = GofileStatus(self, gofile_up, gid, "up")
+            await gather(
+                update_status_message(self.message.chat.id),
+                gofile_up.upload(),
+            )
+            del gofile_up
         else:
             LOGGER.info(f"Rclone Upload Name: {self.name}")
             RCTransfer = RcloneTransferHelper(self)
