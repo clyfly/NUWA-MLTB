@@ -166,12 +166,14 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
     STATUS_LIMIT = Config.STATUS_LIMIT
     tasks_no = len(tasks)
     pages = (max(tasks_no, 1) + STATUS_LIMIT - 1) // STATUS_LIMIT
+    
     if page_no > pages:
         page_no = (page_no - 1) % pages + 1
         status_dict[sid]["page_no"] = page_no
     elif page_no < 1:
         page_no = pages - (abs(page_no) % pages)
         status_dict[sid]["page_no"] = page_no
+    
     start_position = (page_no - 1) * STATUS_LIMIT
 
     for index, task in enumerate(
@@ -183,72 +185,88 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             tstatus = await task.status()
         else:
             tstatus = task.status()
+
+        # Header Task
+        pos = index + start_position
         if task.listener.is_super_chat:
-            msg += f"<b>{index + start_position}.<a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
+            msg += f"<b>{pos}. <a href='{task.listener.message.link}'>{tstatus.upper()}</a></b>\n"
         else:
-            msg += f"<b>{index + start_position}.{tstatus}: </b>"
-        msg += f"<code>{escape(f'{task.name()}')}</code>"
+            msg += f"<b>{pos}. {tstatus.upper()}</b>\n"
+        
+        # Nama Task (Clean Monospace)
+        msg += f"<code>{escape(f'{task.name()}')}</code>\n"
+        
         if task.listener.subname:
-            msg += f"\n<i>{task.listener.subname}</i>"
-        if (
-            tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
-            and task.listener.progress
-        ):
+            msg += f"└ <i>{task.listener.subname}</i>\n"
+
+        # Statistik Progress
+        if tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP] and task.listener.progress:
             progress = task.progress()
-            msg += f"\n{get_progress_bar_string(progress)} {progress}"
-            if task.listener.subname:
-                subsize = f"/{get_readable_file_size(task.listener.subsize)}"
-                ac = len(task.listener.files_to_proceed)
-                count = f"{task.listener.proceed_count}/{ac or '?'}"
-            else:
-                subsize = ""
-                count = ""
-            msg += f"\n<b>Processed:</b> {task.processed_bytes()}{subsize}"
-            if count:
-                msg += f"\n<b>Count:</b> {count}"
-            msg += f"\n<b>Size:</b> {task.size()}"
-            msg += f"\n<b>Speed:</b> {task.speed()}"
-            msg += f"\n<b>ETA:</b> {task.eta()}"
-            if (
-                tstatus == MirrorStatus.STATUS_DOWNLOAD
-                and task.listener.is_torrent
-                or task.listener.is_qbit
-            ):
+            # Pastikan get_progress_bar_string menggunakan karakter seperti ■ dan □
+            msg += f"<code>{get_progress_bar_string(progress)}</code> {progress}\n"
+            
+            subsize = f"/{get_readable_file_size(task.listener.subsize)}" if task.listener.subname else ""
+            ac = len(task.listener.files_to_proceed)
+            count_str = f"\n<b>CNT:</b> {task.listener.proceed_count}/{ac or '?'}" if task.listener.subname else ""
+
+            # Pengelompokan Stats dengan Monospace agar rapi
+            msg += "<code>"
+            msg += f"PRO: {task.processed_bytes()}{subsize}\n"
+            msg += f"SIZ: {task.size()}\n"
+            msg += f"SPD: {task.speed()} | ETA: {task.eta()}"
+            msg += "</code>"
+            msg += count_str
+            
+            if (tstatus == MirrorStatus.STATUS_DOWNLOAD and (task.listener.is_torrent or task.listener.is_qbit)):
                 try:
-                    msg += f"\n<b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
+                    msg += f"\n<code>S: {task.seeders_num()} | L: {task.leechers_num()}</code>"
                 except:
                     pass
+        
         elif tstatus == MirrorStatus.STATUS_SEED:
-            msg += f"\n<b>Size: </b>{task.size()}"
-            msg += f"\n<b>Speed: </b>{task.seed_speed()}"
-            msg += f"\n<b>Uploaded: </b>{task.uploaded_bytes()}"
-            msg += f"\n<b>Ratio: </b>{task.ratio()}"
-            msg += f" | <b>Time: </b>{task.seeding_time()}"
+            msg += "<code>"
+            msg += f"SIZ: {task.size()} | SPD: {task.seed_speed()}\n"
+            msg += f"UP : {task.uploaded_bytes()} | RAT: {task.ratio()}\n"
+            msg += f"TIME: {task.seeding_time()}"
+            msg += "</code>"
         else:
-            msg += f"\n<b>Size: </b>{task.size()}"
+            msg += f"<b>SIZE:</b> <code>{task.size()}</code>"
+
+        # Command Cancel
         msg += f"\n<code>/{BotCommands.CancelTaskCommand[1]} {task.gid()}</code>\n\n"
 
+    # Handle Jika Kosong
     if len(msg) == 0:
         if status == "All":
             return None, None
         else:
-            msg = f"No Active {status} Tasks!\n\n"
+            msg = f"NO ACTIVE {status.upper()} TASKS\n\n"
+
+    # Button Generation (No Emoji)
     buttons = ButtonMaker()
     if not is_user:
-        buttons.data_button("📜", f"status {sid} ov", position="header")
+        buttons.data_button("OVERVIEW", f"status {sid} ov", position="header")
+    
     if len(tasks) > STATUS_LIMIT:
-        msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}\n"
-        buttons.data_button("<<", f"status {sid} pre", position="header")
-        buttons.data_button(">>", f"status {sid} nex", position="header")
+        msg += f"<b>PAGE:</b> {page_no}/{pages} | <b>TASK:</b> {tasks_no} | <b>STEP:</b> {page_step}\n"
+        buttons.data_button("PREV", f"status {sid} pre", position="header")
+        buttons.data_button("NEXT", f"status {sid} nex", position="header")
         if tasks_no > 30:
             for i in [1, 2, 4, 6, 8, 10, 15]:
-                buttons.data_button(i, f"status {sid} ps {i}", position="footer")
+                buttons.data_button(str(i), f"status {sid} ps {i}", position="footer")
+    
     if status != "All" or tasks_no > 20:
         for label, status_value in list(STATUSES.items()):
             if status_value != status:
-                buttons.data_button(label, f"status {sid} st {status_value}")
-    buttons.data_button("♻️", f"status {sid} ref", position="header")
+                buttons.data_button(label.upper(), f"status {sid} st {status_value}")
+    
+    buttons.data_button("REFRESH", f"status {sid} ref", position="header")
     button = buttons.build_menu(8)
-    msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
-    msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
+
+    # Footer System Informasi
+    msg += "──────────────────\n"
+    msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}\n"
+    msg += f"<b>RAM:</b> {virtual_memory().percent}% | <b>UP:</b> {get_readable_time(time() - bot_start_time)}"
+    
     return msg, button
+
