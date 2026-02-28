@@ -29,15 +29,17 @@ bot_loop = new_event_loop()
 set_event_loop(bot_loop)
 
 basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(module)s.%(funcName)s:%(lineno)d - %(message)s",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[FileHandler("log.txt"), StreamHandler()],
     level=INFO,
 )
 
 LOGGER = getLogger(__name__)
 cpu_no = cpu_count()
+threads = max(1, cpu_no // 2)
+cores = ",".join(str(i) for i in reversed(range(threads)))
 
-DOWNLOAD_DIR = "/usr/src/app/downloads/"
+DOWNLOAD_DIR = "/app/downloads/"
 intervals = {"status": {}, "qb": "", "jd": "", "nzb": "", "stopAll": False}
 qb_torrents = {}
 jd_downloads = {}
@@ -53,6 +55,7 @@ task_dict = {}
 rss_dict = {}
 auth_chats = {}
 excluded_extensions = ["aria2", "!qB"]
+included_extensions = []
 drives_names = []
 drives_ids = []
 index_urls = []

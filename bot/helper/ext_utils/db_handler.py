@@ -6,7 +6,7 @@ from pymongo.server_api import ServerApi
 from pymongo.errors import PyMongoError
 
 from ... import LOGGER, user_data, rss_dict, qbit_options
-from ...core.nuwa_client import TgClient
+from ...core.telegram_manager import TgClient
 from ...core.config_manager import Config
 
 
@@ -26,7 +26,7 @@ class DbManager:
                 connectTimeoutMS=60000,
                 serverSelectionTimeoutMS=60000,
             )
-            self.db = self._conn.nuwa
+            self.db = self._conn[Config.DATABASE_NAME]
             self._return = False
         except PyMongoError as e:
             LOGGER.error(f"Error in DB connection: {e}")

@@ -6,6 +6,7 @@ from asyncio import iscoroutinefunction, gather
 from ... import task_dict, task_dict_lock, bot_start_time, status_dict, DOWNLOAD_DIR
 from ...core.config_manager import Config
 from ..telegram_helper.button_build import ButtonMaker
+from ..telegram_helper.bot_commands import BotCommands
 
 SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
 
@@ -189,7 +190,6 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         msg += f"<code>{escape(f'{task.name()}')}</code>"
         if task.listener.subname:
             msg += f"\n<i>{task.listener.subname}</i>"
-        msg += "<blockquote>"
         if (
             tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
             and task.listener.progress
@@ -203,32 +203,31 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             else:
                 subsize = ""
                 count = ""
-            msg += f"\n• <b>Processed:</b> {task.processed_bytes()}{subsize}"
+            msg += f"\n<b>Processed:</b> {task.processed_bytes()}{subsize}"
             if count:
-                msg += f"\n• <b>Count:</b> {count}"
-            msg += f"\n• <b>Size:</b> {task.size()}"
-            msg += f"\n• <b>Speed:</b> {task.speed()}"
-            msg += f"\n• <b>ETA:</b> {task.eta()}"
+                msg += f"\n<b>Count:</b> {count}"
+            msg += f"\n<b>Size:</b> {task.size()}"
+            msg += f"\n<b>Speed:</b> {task.speed()}"
+            msg += f"\n<b>ETA:</b> {task.eta()}"
             if (
                 tstatus == MirrorStatus.STATUS_DOWNLOAD
                 and task.listener.is_torrent
                 or task.listener.is_qbit
             ):
                 try:
-                    msg += f"\n• <b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
+                    msg += f"\n<b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
                 except:
                     pass
         elif tstatus == MirrorStatus.STATUS_SEED:
-            msg += f"\n• <b>Size: </b>{task.size()}"
-            msg += f"\n• <b>Speed: </b>{task.seed_speed()}"
-            msg += f"\n• <b>Uploaded: </b>{task.uploaded_bytes()}"
-            msg += f"\n• <b>Ratio: </b>{task.ratio()}"
+            msg += f"\n<b>Size: </b>{task.size()}"
+            msg += f"\n<b>Speed: </b>{task.seed_speed()}"
+            msg += f"\n<b>Uploaded: </b>{task.uploaded_bytes()}"
+            msg += f"\n<b>Ratio: </b>{task.ratio()}"
             msg += f" | <b>Time: </b>{task.seeding_time()}"
         else:
-            msg += f"\n• <b>Size: </b>{task.size()}"
-        msg += f"\n• <b>Gid: </b><code>{task.gid()}</code>"
-        msg += "</blockquote>"
-        msg += f"<code>/cancel {task.gid()}</code>\n\n"
+            msg += f"\n<b>Size: </b>{task.size()}"
+        msg += f"\n<code>/{BotCommands.CancelTaskCommand[1]} {task.gid()}</code>\n\n"
+
     if len(msg) == 0:
         if status == "All":
             return None, None
@@ -236,7 +235,7 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             msg = f"No Active {status} Tasks!\n\n"
     buttons = ButtonMaker()
     if not is_user:
-        buttons.data_button("ᴛᴀsᴋ", f"status {sid} ov", position="header")
+        buttons.data_button("📜", f"status {sid} ov", position="header")
     if len(tasks) > STATUS_LIMIT:
         msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}\n"
         buttons.data_button("<<", f"status {sid} pre", position="header")

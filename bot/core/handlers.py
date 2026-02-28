@@ -4,7 +4,7 @@ from pyrogram.handlers import MessageHandler, CallbackQueryHandler, EditedMessag
 from ..modules import *
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.filters import CustomFilters
-from .nuwa_client import TgClient
+from .telegram_manager import TgClient
 
 
 def add_handlers():
@@ -316,13 +316,6 @@ def add_handlers():
         MessageHandler(
             hydra_search,
             filters=command(BotCommands.NzbSearchCommand, case_sensitive=True)
-            & CustomFilters.authorized,
-        )
-    )
-    TgClient.bot.add_handler(
-        MessageHandler(
-            speedtest,
-            filters=command(BotCommands.SpeedTestCommand, case_sensitive=True)
             & CustomFilters.authorized,
         )
     )

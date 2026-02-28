@@ -13,7 +13,7 @@ from ..helper.telegram_helper.message_utils import (
 from ..helper.ext_utils.db_handler import database
 from ..helper.ext_utils.files_utils import clean_all
 from ..helper.telegram_helper.button_build import ButtonMaker
-from ..core.nuwa_client import TgClient
+from ..core.telegram_manager import TgClient
 from ..core.config_manager import Config
 from ..core.jdownloader_booter import jdownloader
 from ..core.torrent_manager import TorrentManager
@@ -23,7 +23,7 @@ from ..core.torrent_manager import TorrentManager
 async def restart_bot(_, message):
     buttons = ButtonMaker()
     buttons.data_button("Yes!", "botrestart confirm")
-    buttons.data_button("No!", "botrestart cancel")
+    buttons.data_button("Cancel", "botrestart cancel")
     button = buttons.build_menu(2)
     await send_message(message, "Are you sure you want to restart the bot ?!", button)
 
@@ -35,14 +35,12 @@ async def send_incomplete_task_message(cid, msg_id, msg):
                 chat_id=cid,
                 message_id=msg_id,
                 text=msg,
-                disable_web_page_preview=True,
             )
             await remove(".restartmsg")
         else:
             await TgClient.bot.send_message(
                 chat_id=cid,
                 text=msg,
-                disable_web_page_preview=True,
                 disable_notification=True,
             )
     except Exception as e:

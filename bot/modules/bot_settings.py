@@ -27,6 +27,7 @@ from .. import (
     nzb_options,
     jd_listener_lock,
     excluded_extensions,
+    included_extensions,
     auth_chats,
     sudo_users,
 )
@@ -35,7 +36,7 @@ from ..helper.ext_utils.bot_utils import (
     new_task,
 )
 from ..core.config_manager import Config
-from ..core.nuwa_client import TgClient
+from ..core.telegram_manager import TgClient
 from ..core.torrent_manager import TorrentManager
 from ..core.startup import update_qb_options, update_nzb_options, update_variables
 from ..helper.ext_utils.db_handler import database
@@ -129,7 +130,7 @@ async def get_buttons(key=None, edit_type=None):
     elif key == "var":
         conf_dict = Config.get_all()
         for k in list(conf_dict.keys())[start : 10 + start]:
-            if k == "DATABASE_URL" and state != "view":
+            if k in ["DATABASE_URL", "DATABASE_NAME"] and state != "view":
                 continue
             buttons.data_button(k, f"botset botvar {k}")
         if state == "view":
@@ -240,7 +241,7 @@ async def update_buttons(message, key=None, edit_type=None):
 @new_task
 async def edit_variable(_, message, pre_message, key):
     handler_dict[message.chat.id] = False
-    value = message.text
+    value = str(message.text)
     if value.lower() == "true":
         value = True
     elif value.lower() == "false":
@@ -274,6 +275,12 @@ async def edit_variable(_, message, pre_message, key):
         for x in fx:
             x = x.lstrip(".")
             excluded_extensions.append(x.strip().lower())
+    elif key == "INCLUDED_EXTENSIONS":
+        fx = value.split()
+        included_extensions.clear()
+        for x in fx:
+            x = x.lstrip(".")
+            included_extensions.append(x.strip().lower())
     elif key == "GDRIVE_ID":
         if drives_names and drives_names[0] == "Main":
             drives_ids[0] = value
@@ -333,7 +340,7 @@ async def edit_variable(_, message, pre_message, key):
 @new_task
 async def edit_aria(_, message, pre_message, key):
     handler_dict[message.chat.id] = False
-    value = message.text
+    value = str(message.text)
     if key == "newkey":
         key, value = [x.strip() for x in value.split(":", 1)]
     elif value.lower() == "true":
@@ -349,7 +356,7 @@ async def edit_aria(_, message, pre_message, key):
 @new_task
 async def edit_qbit(_, message, pre_message, key):
     handler_dict[message.chat.id] = False
-    value = message.text
+    value = str(message.text)
     if value.lower() == "true":
         value = True
     elif value.lower() == "false":
@@ -368,7 +375,7 @@ async def edit_qbit(_, message, pre_message, key):
 @new_task
 async def edit_nzb(_, message, pre_message, key):
     handler_dict[message.chat.id] = False
-    value = message.text
+    value = str(message.text)
     if value.isdigit():
         value = int(value)
     elif value.startswith("[") and value.endswith("]"):
@@ -388,7 +395,7 @@ async def edit_nzb(_, message, pre_message, key):
 @new_task
 async def edit_nzb_server(_, message, pre_message, key, index=0):
     handler_dict[message.chat.id] = False
-    value = message.text
+    value = str(message.text)
     if key == "newser":
         if value.startswith("{") and value.endswith("}"):
             try:
@@ -439,7 +446,7 @@ async def sync_jdownloader():
 @new_task
 async def update_private_file(_, message, pre_message):
     handler_dict[message.chat.id] = False
-    if not message.media and (file_name := message.text):
+    if not message.media and (file_name := str(message.text)):
         if await aiopath.isfile(file_name) and file_name != "config.py":
             await remove(file_name)
         if file_name == "accounts.zip":
@@ -449,7 +456,7 @@ async def update_private_file(_, message, pre_message):
                 await rmtree("rclone_sa", ignore_errors=True)
             Config.USE_SERVICE_ACCOUNTS = False
             await database.update_config({"USE_SERVICE_ACCOUNTS": False})
-        elif file_name in [".netrc", "netrc"]:
+        elif file_name in {".netrc", "netrc"}:
             await (await create_subprocess_exec("touch", ".netrc")).wait()
             await (await create_subprocess_exec("chmod", "600", ".netrc")).wait()
             await (await create_subprocess_exec("cp", ".netrc", "/root/.netrc")).wait()
@@ -571,7 +578,17 @@ async def edit_bot_settings(client, query):
         await update_buttons(message, data[1])
     elif data[1] == "resetvar":
         await query.answer()
-        value = ""
+        expected_type = type(getattr(Config, data[2]))
+        if expected_type == bool:
+            value = False
+        elif expected_type == int:
+            value = 0
+        elif expected_type == str:
+            value = ""
+        elif expected_type == list:
+            value = []
+        elif expected_type == dict:
+            value = {}
         if data[2] in DEFAULT_VALUES:
             value = DEFAULT_VALUES[data[2]]
             if (
@@ -587,6 +604,8 @@ async def edit_bot_settings(client, query):
         elif data[2] == "EXCLUDED_EXTENSIONS":
             excluded_extensions.clear()
             excluded_extensions.extend(["aria2", "!qB"])
+        elif data[2] == "INCLUDED_EXTENSIONS":
+            included_extensions.clear()
         elif data[2] == "TORRENT_TIMEOUT":
             await TorrentManager.change_aria2_option("bt-stop-timeout", "0")
             await database.update_aria2("bt-stop-timeout", "0")

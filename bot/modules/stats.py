@@ -20,11 +20,11 @@ from ..helper.telegram_helper.message_utils import send_message
 commands = {
     "aria2": (["xria", "--version"], r"aria2 version ([\d.]+)"),
     "qBittorrent": (["xnox", "--version"], r"qBittorrent v([\d.]+)"),
-    "SABnzbd+": (["xnzb", "--version"], r"xnzb-([\d.]+)"),
+    "SABnzbd+": (["xnzb", "--version"], r"sabnzbdplus-([\d.]+)"),
     "python": (["python3", "--version"], r"Python ([\d.]+)"),
     "rclone": (["xone", "--version"], r"rclone v([\d.]+)"),
     "yt-dlp": (["yt-dlp", "--version"], r"([\d.]+)"),
-    "ffmpeg": (["xtra", "-version"], r"ffmpeg version\s+n?(\d+\.\d+\.\d+-\d+)"),
+    "ffmpeg": (["xtra", "-version"], r"ffmpeg version ([\d.]+(-\w+)?).*"),
     "7z": (["7z", "i"], r"7-Zip ([\d.]+)"),
 }
 
@@ -34,6 +34,8 @@ async def bot_stats(_, message):
     total, used, free, disk = disk_usage("/")
     swap = swap_memory()
     memory = virtual_memory()
+    per_cpu = cpu_percent(interval=1, percpu=True)
+    per_cpu_str = " | ".join([f"CPU{i+1}: {round(p)}%" for i, p in enumerate(per_cpu)])
     stats = f"""
 <b>Commit Date:</b> {commands["commit"]}
 
@@ -46,7 +48,10 @@ async def bot_stats(_, message):
 <b>Upload:</b> {get_readable_file_size(net_io_counters().bytes_sent)}
 <b>Download:</b> {get_readable_file_size(net_io_counters().bytes_recv)}
 
-<b>CPU:</b> {cpu_percent(interval=0.5)}%
+<b>CPU:</b> {cpu_percent(interval=1)}%
+<b>CPU Cores:</b>
+{per_cpu_str}
+
 <b>RAM:</b> {memory.percent}%
 <b>DISK:</b> {disk}%
 

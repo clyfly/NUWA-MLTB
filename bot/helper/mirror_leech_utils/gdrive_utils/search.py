@@ -99,7 +99,6 @@ class GoogleDriveSearch(GoogleDriveHelper):
         contents_no = 0
         telegraph_content = []
         Title = False
-        has_results = False
 
         if target_id.startswith("mtp:"):
             drives = self.get_user_drive(target_id, user_id)
@@ -132,12 +131,6 @@ class GoogleDriveSearch(GoogleDriveHelper):
                     break
                 else:
                     continue
-            
-            # Jika ada hasil, tambah header image (hanya sekali)
-            if not has_results:
-                msg += f'<img src="https://i.pinimg.com/736x/9f/76/95/9f76951599947bb26da66feb7cb1e5fa.jpg" alt="RBIE-MLTB" width="700"><br><br>'
-                has_results = True
-                
             if not Title:
                 msg += f"<h4>Search Result For {file_name}</h4>"
                 Title = True
@@ -175,10 +168,6 @@ class GoogleDriveSearch(GoogleDriveHelper):
                     msg = ""
             if self._no_multi:
                 break
-
-        # Jika tidak ada hasil sama sekali, return kosong
-        if not has_results:
-            return [], 0
 
         if msg != "":
             telegraph_content.append(msg)

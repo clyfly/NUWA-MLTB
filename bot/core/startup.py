@@ -1,4 +1,3 @@
-from os import environ
 from aiofiles.os import path as aiopath, remove, makedirs
 from aiofiles import open as aiopen
 from aioshutil import rmtree
@@ -14,6 +13,7 @@ from .. import (
     index_urls,
     user_data,
     excluded_extensions,
+    included_extensions,
     LOGGER,
     rss_dict,
     sabnzbd_client,
@@ -22,7 +22,7 @@ from .. import (
 )
 from ..helper.ext_utils.db_handler import database
 from .config_manager import Config
-from .nuwa_client import TgClient
+from .telegram_manager import TgClient
 from .torrent_manager import TorrentManager
 
 
@@ -218,6 +218,12 @@ async def update_variables():
             x = x.lstrip(".")
             excluded_extensions.append(x.strip().lower())
 
+    if Config.INCLUDED_EXTENSIONS:
+        fx = Config.INCLUDED_EXTENSIONS.split()
+        for x in fx:
+            x = x.lstrip(".")
+            included_extensions.append(x.strip().lower())
+
     if Config.GDRIVE_ID:
         drives_names.append("Main")
         drives_ids.append(Config.GDRIVE_ID)
@@ -244,7 +250,7 @@ async def load_configurations():
 
     await (
         await create_subprocess_shell(
-            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x x-pkg.sh && ./x-pkg.sh"
+            "chmod 600 .netrc && cp .netrc /root/.netrc && chmod +x aria-nox-nzb.sh && ./aria-nox-nzb.sh"
         )
     ).wait()
 
