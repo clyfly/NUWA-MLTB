@@ -2,6 +2,7 @@ from asyncio import sleep
 
 from .. import task_dict, task_dict_lock, user_data, multi_tags
 from ..core.config_manager import Config
+from ..core.telegram_manager import TgClient
 from ..helper.ext_utils.bot_utils import new_task
 from ..helper.ext_utils.status_utils import (
     get_task_by_gid,
@@ -21,11 +22,14 @@ from ..helper.telegram_helper.message_utils import (
 
 @new_task
 async def cancel(_, message):
-    user_id = message.from_user.id if message.from_user else message.sender_chat.id
-    msg = message.text.split()
+    user_id = (message.from_user or message.sender_chat).id
+    msg = message.text.split("_", maxsplit=1)
     if len(msg) > 1:
-        gid = msg[1]
-        if len(gid) == 4:
+        cmd_data = msg[1].split("@", maxsplit=1)
+        if len(cmd_data) > 1 and cmd_data[1].strip() != TgClient.NAME:
+            return
+        gid = cmd_data[0]
+        if len(gid) == 6:
             multi_tags.discard(gid)
             return
         else:
