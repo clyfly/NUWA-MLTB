@@ -31,5 +31,6 @@ urllib3
 uvicorn
 uvloop
 xattr
+gallery-dl
 yt-dlp[default,curl-cffi]
 yt-dlp-ejs
