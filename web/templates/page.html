@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
     <meta charset="UTF-8">
@@ -7,23 +7,72 @@
     <title>Clyfly Bot - Torrent Selector</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap');
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ── CSS Variables for theming ── */
+        :root {
+            --transition: 0.4s ease;
         }
 
+        [data-theme="dark"] {
+            --bg-base: linear-gradient(135deg, #0d1117 0%, #161e2e 50%, #0d1117 100%);
+            --bg-surface: rgba(22, 30, 46, 0.85);
+            --bg-surface-hover: rgba(30, 40, 62, 0.95);
+            --bg-input: rgba(255,255,255,0.06);
+            --bg-input-focus: rgba(99,102,241,0.12);
+            --bg-stats: rgba(255,255,255,0.04);
+            --border: rgba(255,255,255,0.1);
+            --border-hover: rgba(255,255,255,0.18);
+            --border-focus: rgba(99,102,241,0.5);
+            --text-primary: #e8eaf0;
+            --text-secondary: #8b93a7;
+            --text-muted: #5a6478;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99,102,241,0.25);
+            --header-bg: rgba(10, 14, 26, 0.9);
+            --footer-bg: rgba(10, 14, 26, 0.9);
+            --shadow: 0 8px 40px rgba(0,0,0,0.4);
+            --shadow-card: 0 2px 20px rgba(0,0,0,0.3);
+            --overlay: radial-gradient(ellipse at 15% 40%, rgba(99,102,241,0.08) 0%, transparent 55%),
+                        radial-gradient(ellipse at 85% 75%, rgba(139,92,246,0.06) 0%, transparent 55%);
+        }
+
+        [data-theme="light"] {
+            --bg-base: linear-gradient(135deg, #e8eaf6 0%, #ede7f6 50%, #e3f2fd 100%);
+            --bg-surface: rgba(255,255,255,0.52);
+            --bg-surface-hover: rgba(255,255,255,0.72);
+            --bg-input: rgba(255,255,255,0.45);
+            --bg-input-focus: rgba(99,102,241,0.1);
+            --bg-stats: rgba(255,255,255,0.38);
+            --border: rgba(255,255,255,0.75);
+            --border-hover: rgba(255,255,255,0.95);
+            --border-focus: rgba(99,102,241,0.45);
+            --text-primary: #1a1f2e;
+            --text-secondary: #4a526a;
+            --text-muted: #8a94aa;
+            --accent: #4f52e0;
+            --accent-hover: #6366f1;
+            --accent-glow: rgba(99,102,241,0.2);
+            --header-bg: rgba(255,255,255,0.55);
+            --footer-bg: rgba(255,255,255,0.55);
+            --shadow: 0 8px 40px rgba(99,102,241,0.12);
+            --shadow-card: 0 4px 24px rgba(99,102,241,0.08);
+            --overlay: radial-gradient(ellipse at 15% 40%, rgba(99,102,241,0.12) 0%, transparent 55%),
+                        radial-gradient(ellipse at 85% 75%, rgba(139,92,246,0.1) 0%, transparent 55%);
+        }
+
+        /* ── Reset & Base ── */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            transition: background-color 0.5s, color 0.5s;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0f1729 100%);
-            color: #f5f5f7;
+            transition: background var(--transition), color var(--transition);
             position: relative;
             overflow-x: hidden;
         }
@@ -31,424 +80,312 @@
         body::before {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+            inset: 0;
+            background: var(--overlay);
             pointer-events: none;
             z-index: 0;
+            transition: background var(--transition);
         }
 
-        .dark {
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0f1729 100%);
-            color: #f5f5f7;
-        }
-
-        .light {
-            background-color: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        .card {
-            background: rgba(255, 255, 255, 0.08);
+        /* ── Header ── */
+        header {
+            background: var(--header-bg);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1.1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .brand-logo {
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .brand-logo span.bolt {
+            font-size: 1.2rem;
+            filter: drop-shadow(0 0 6px var(--accent-glow));
+        }
+
+        /* ── Theme Toggle ── */
+        .theme-toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
             border-radius: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 0.3rem 0.75rem;
+            cursor: pointer;
             transition: all 0.3s ease;
+            user-select: none;
         }
 
-        .card:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        .theme-toggle-wrap:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-surface-hover);
         }
 
-        .dark .card {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+        .theme-icon {
+            font-size: 1rem;
+            transition: transform 0.5s ease, opacity 0.3s ease;
         }
 
-        .light .card {
-            background: rgba(0, 0, 0, 0.02);
-            border: 1px solid rgba(0, 0, 0, 0.08);
-            color: #1d1d1f;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 1rem;
+        .theme-label {
+            font-size: 0.8rem;
             font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            box-shadow: var(--shadow-card);
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+        }
+
+        /* ── Main ── */
+        main {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        /* ── PIN Entry ── */
+        #pinEntry {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .pin-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .pin-subtitle {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        /* ── Inputs ── */
+        input[type="text"],
+        input[type="password"],
+        .edit-name-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 0.875rem;
+            color: var(--text-primary);
+            padding: 0.875rem 1.1rem;
+            font-size: 0.95rem;
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.3s ease;
+            outline: none;
+            margin-bottom: 1rem;
+        }
+
+        input[type="text"]::placeholder,
+        input[type="password"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        .edit-name-input:focus {
+            border-color: var(--border-focus);
+            background: var(--bg-input-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 0.72rem 1.4rem;
+            border-radius: 0.875rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            gap: 0.4rem;
+            transition: all 0.25s ease;
             border: none;
-            font-size: 0.95rem;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:active {
-            transform: translateY(0px);
-        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
 
         .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 16px var(--accent-glow);
         }
 
         .btn-primary:hover {
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
-            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            background: var(--accent-hover);
+            box-shadow: 0 6px 24px var(--accent-glow);
         }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.15);
-            color: #f5f5f7;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .btn-ghost {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
         }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.3);
+        .btn-ghost:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
         }
 
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 56px;
-            height: 32px;
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
         }
 
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.15);
-            transition: 0.4s;
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .btn-full { width: 100%; }
+
+        /* ── Action Bar ── */
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 0.65rem;
+            margin-bottom: 1.25rem;
         }
 
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 24px;
-            width: 24px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: 0.4s;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        @media (max-width: 560px) {
+            .action-bar {
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
-        input:checked+.slider {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border-color: rgba(99, 102, 241, 0.5);
+        .action-bar .btn-submit {
+            grid-column: span 1;
         }
 
-        input:checked+.slider:before {
-            transform: translateX(24px);
+        @media (max-width: 560px) {
+            .action-bar .btn-submit {
+                grid-column: span 2;
+            }
+        }
+
+        /* ── Stats Box ── */
+        .stats-box {
+            background: var(--bg-stats);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 0.9rem 1.2rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .stats-box .stat {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+
+        .stats-box .stat-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--text-muted);
+        }
+
+        .stats-box .stat-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .stats-box .stat-value span.accent {
+            color: var(--accent);
+        }
+
+        /* ── File Tree ── */
+        #fileTree {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
 
         .file-tree-item {
             display: flex;
             align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.2s ease;
+            padding: 0.7rem 0.9rem;
             border-radius: 0.75rem;
-            margin-bottom: 4px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
         .file-tree-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.12);
+            background: var(--bg-surface-hover);
+            border-color: var(--border);
         }
 
-        .dark .file-tree-item:hover {
-            background: rgba(255, 255, 255, 0.08);
+        .file-tree-item.back-btn {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.35rem;
         }
 
-        .icon {
-            margin-right: 12px;
-            font-size: 1.3em;
+        .file-tree-item.back-btn:hover {
+            background: var(--bg-input-focus);
+            border-color: var(--border-focus);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
             flex-shrink: 0;
         }
 
-        .folder {
+        input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
             cursor: pointer;
-            font-weight: 600;
-            color: #6366f1;
+            accent-color: var(--accent);
+            margin-bottom: 0;
+            border-radius: 4px;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .modal-content {
-            background: rgba(15, 23, 41, 0.95);
-            backdrop-filter: blur(20px);
-            color: #f5f5f7;
-            margin: 50% auto;
-            transform: translateY(-50%);
-            padding: 2rem;
-            border-radius: 2rem;
-            width: 90%;
-            max-width: 500px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideUp 0.3s ease;
-        }
-
-        .dark .modal-content {
-            background: rgba(15, 23, 41, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .light .modal-content {
-            background: rgba(245, 245, 247, 0.95);
-            color: #1d1d1f;
-            border: 1px solid rgba(0, 0, 0, 0.08);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(-50%);
-            }
-        }
-
-        @keyframes day-night {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .day-night-animation {
-            animation: day-night 1s linear;
-        }
-
-        .edit-name-input {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 0.75rem;
-            color: #f5f5f7;
-            font-size: inherit;
-            padding: 0.75rem 1rem;
-            margin-right: 8px;
-            width: 100%;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-
-        .edit-name-input:focus {
-            outline: none;
-            border: 1px solid rgba(99, 102, 241, 0.5);
-            background: rgba(99, 102, 241, 0.1);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .pin-entry {
-            animation: fadeIn 0.5s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .pin-entry.fadeOut {
-            animation: fadeOut 0.5s;
-        }
-
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-
-        .size-info {
-            font-size: 0.85em;
-            color: #a0aec0;
-            font-weight: 500;
-        }
-
-        .dark .size-info {
-            color: #a0aec0;
-        }
-
-        .light input[type="text"],
-        .light input[type="password"] {
-            background: rgba(0, 0, 0, 0.05);
-            color: #1d1d1f;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        header {
-            background: rgba(15, 23, 41, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 1.5rem 0;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 10;
-        }
-
-        footer {
-            background: rgba(15, 23, 41, 0.8);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2rem 0;
-            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.1);
-            margin-top: auto;
-            position: relative;
-            z-index: 10;
-        }
-
-        .social-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
+        .item-icon {
+            margin: 0 0.6rem;
             font-size: 1.1rem;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .social-button:hover {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            border-color: rgba(99, 102, 241, 0.5);
-            transform: scale(1.1) translateY(-2px);
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3);
-        }
-
-        .brand-logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .edit-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .edit-buttons button {
-            padding: 6px 12px;
-            font-size: 0.8em;
-        }
-
-        @media (max-width: 640px) {
-            .card {
-                border-radius: 1.5rem;
-            }
-
-            .btn {
-                padding: 0.65rem 1.25rem;
-                font-size: 0.9rem;
-            }
-
-            .modal-content {
-                width: 95%;
-                padding: 1.5rem;
-            }
-
-            .footer-content {
-                flex-direction: column-reverse;
-                align-items: center;
-            }
-
-            .footer-buttons {
-                margin-bottom: 1rem;
-            }
-
-            .file-tree-item .file-name,
-            .file-tree-item .folder-name {
-                font-size: 0.95em;
-            }
-
-            header {
-                padding: 1rem 0;
-            }
-
-            .brand-logo {
-                font-size: 1.4rem;
-            }
-        }
-
-        #pinEntry {
-            max-width: 380px;
-            margin: 0 auto;
-        }
-
-        #pinEntry input[type="text"] {
-            width: 100%;
-            margin-bottom: 1.5rem;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 1rem;
-            color: #f5f5f7;
-            padding: 0.875rem 1rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        #pinEntry input[type="text"]:focus {
-            outline: none;
-            background: rgba(99, 102, 241, 0.1);
-            border-color: rgba(99, 102, 241, 0.5);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        #pinEntry button {
-            width: 100%;
+            flex-shrink: 0;
         }
 
         .file-info {
@@ -458,164 +395,263 @@
             min-width: 0;
         }
 
-        .file-info-row {
+        .file-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.3;
+        }
+
+        .folder-name {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .size-info {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: 'DM Mono', monospace;
+            margin-top: 0.15rem;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 0.5rem;
         }
 
         .edit-btn {
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 0.9em;
-            color: #6366f1;
-            padding: 0;
-            margin-left: 12px;
-            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
             font-weight: 600;
-        }
-
-        .edit-btn:hover {
-            color: #8b5cf6;
-            transform: scale(1.05);
-        }
-
-        .checkbox-wrapper {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-        }
-
-        input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #6366f1;
-        }
-
-        .file-name {
-            word-break: break-word;
-            max-width: 100%;
-            overflow-wrap: break-word;
-            color: #f5f5f7;
-            font-weight: 500;
-        }
-
-        main {
-            position: relative;
-            z-index: 1;
-        }
-
-        .stats-box {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 1.25rem;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .stats-box p {
-            margin: 0.5rem 0;
-            font-size: 0.95rem;
+            padding: 0;
+            transition: color 0.2s ease;
             letter-spacing: 0.2px;
         }
 
-        .button-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+        .edit-btn:hover {
+            color: var(--accent);
         }
 
-        .button-group-item {
-            display: flex;
-            flex-direction: column;
+        /* ── Modal ── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
         }
 
-        .button-group-item .btn {
-            width: 100%;
+        .modal-content {
+            background: var(--bg-surface);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 460px;
+            box-shadow: var(--shadow);
+            animation: slideUp 0.3s ease;
+            transition: background var(--transition), border-color var(--transition);
         }
 
-        .button-group-item span {
-            font-size: 0.75rem;
-            color: #a0aec0;
-            font-weight: 500;
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+        }
+
+        .modal-body {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.6rem;
+            justify-content: flex-end;
+        }
+
+        /* ── Footer ── */
+        footer {
+            background: var(--footer-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: relative;
+            z-index: 10;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .social-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .social-button:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .pin-entry {
+            animation: slideUp 0.4s ease;
+        }
+
+        .fadeOut {
+            animation: fadeOut 0.4s ease forwards;
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* ── Section Heading ── */
+        .section-heading {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: var(--text-primary);
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── Divider ── */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 640px) {
+            .card { border-radius: 1.25rem; }
+            .modal-content { padding: 1.5rem; }
         }
     </style>
 </head>
 
-<body class="dark">
+<body>
+    <!-- Header -->
     <header>
         <div class="container mx-auto px-4">
-            <div class="flex flex-col sm:flex-row justify-between items-center">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div class="brand-logo">
-                    <span>⚡</span>
+                    <span class="bolt">⚡</span>
                     <span>Clyfly Bot</span>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center">
-                        <span id="themeIcon" class="mr-3 text-2xl">🌙</span>
-                        <label class="switch">
-                            <input type="checkbox" id="themeToggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                <div class="theme-toggle-wrap" id="themeToggle" title="Toggle theme">
+                    <span class="theme-icon" id="themeIcon">🌙</span>
+                    <span class="theme-label" id="themeLabel">Dark</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="flex-grow container mx-auto p-4">
-        <div id="pinEntry" class="card p-8 mb-6 pin-entry">
-            <h2 class="text-2xl font-bold mb-2 text-center">Welcome to Clyfly Bot</h2>
-            <p class="text-center text-sm text-gray-400 mb-6">Enter your PIN to access torrent files</p>
-            <input type="text" id="pinInput"
-                title="Enter the PIN code from Telegram to access torrent files"
-                class="mb-6" placeholder="Enter PIN">
-            <button id="submitPin" class="btn btn-primary w-full">Submit</button>
+    <!-- Main -->
+    <main class="container mx-auto p-4 py-8">
+
+        <!-- PIN Entry -->
+        <div id="pinEntry" class="card p-8 pin-entry" style="max-width:400px; margin:0 auto;">
+            <h2 class="pin-title text-center">Welcome Back</h2>
+            <p class="pin-subtitle text-center">Enter your PIN to access torrent files</p>
+            <input type="text" id="pinInput" placeholder="Enter PIN" autocomplete="off">
+            <button id="submitPin" class="btn btn-primary btn-full" style="margin-top:0.25rem;">
+                Continue →
+            </button>
         </div>
 
-        <div id="fileManager" class="card p-8 hidden">
-            <h2 class="text-2xl font-bold mb-6">Select Files</h2>
-            <div class="button-group">
-                <div class="button-group-item">
-                    <button id="selectAllBtn" class="btn btn-primary">Select All</button>
-                    <span>in this folder</span>
-                </div>
-                <div class="button-group-item">
-                    <button id="invertSelectionBtn" class="btn btn-primary">Invert</button>
-                    <span>in this folder</span>
-                </div>
-                <div class="button-group-item">
-                    <button id="selectEverythingBtn" class="btn btn-primary">Select All</button>
-                    <span>all files</span>
-                </div>
-                <div class="button-group-item">
-                    <button id="submitBtn" class="btn btn-primary">Submit</button>
-                    <span>selection</span>
-                </div>
+        <!-- File Manager -->
+        <div id="fileManager" class="card p-6 hidden" style="max-width:760px; margin:0 auto;">
+            <h2 class="section-heading">Select Files</h2>
+
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <button id="selectAllBtn" class="btn btn-ghost">This Folder</button>
+                <button id="invertSelectionBtn" class="btn btn-ghost">Invert</button>
+                <button id="selectEverythingBtn" class="btn btn-ghost">All Files</button>
+                <button id="submitBtn" class="btn btn-primary btn-submit">
+                    Submit
+                </button>
             </div>
 
+            <!-- Stats -->
             <div class="stats-box">
-                <p><span class="font-semibold">Selected files:</span> <span id="selectedCount">0</span> / <span id="totalCount">0</span></p>
-                <p><span class="font-semibold">Total size:</span> <span id="selectedSize">0 B</span> / <span id="totalSize">0 B</span></p>
+                <div class="stat">
+                    <span class="stat-label">Selected</span>
+                    <span class="stat-value"><span id="selectedCount" class="accent">0</span> / <span id="totalCount">0</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Size</span>
+                    <span class="stat-value"><span id="selectedSize" class="accent">0 B</span> / <span id="totalSize">0 B</span></span>
+                </div>
             </div>
 
-            <div id="fileTree" class="mb-4"></div>
+            <!-- File Tree -->
+            <div id="fileTree"></div>
         </div>
+
     </main>
 
+    <!-- Footer -->
     <footer>
         <div class="container mx-auto px-4">
-            <div class="footer-content flex flex-col sm:flex-row justify-between items-center">
-                <p class="text-center sm:text-left mb-4 sm:mb-0 text-sm">&copy; 2024-2025 Clyfly Bot. All rights reserved.</p>
-                <div class="footer-buttons flex space-x-3">
-                    <a href="https://github.com/anasty17/mirror-leech-telegram-bot" target="_blank"
-                        class="social-button" title="GitHub">
+            <div class="footer-inner">
+                <p class="footer-copy">© 2024–2025 Clyfly Bot. All rights reserved.</p>
+                <div style="display:flex; gap:0.5rem;">
+                    <a href="https://github.com/anasty17/mirror-leech-telegram-bot" target="_blank" class="social-button" title="GitHub">
                         <i class="fab fa-github"></i>
                     </a>
                     <a href="https://www.instagram.com" target="_blank" class="social-button" title="Instagram">
@@ -626,24 +662,53 @@
         </div>
     </footer>
 
+    <!-- Modal -->
     <div id="reusableModal" class="modal">
         <div class="modal-content">
-            <h2 id="modalTitle" class="text-2xl font-bold mb-4"></h2>
-            <div id="modalBody" class="mb-6 text-sm"></div>
-            <div id="modalFooter" class="flex gap-3 justify-end"></div>
+            <h2 id="modalTitle" class="modal-title"></h2>
+            <div id="modalBody" class="modal-body"></div>
+            <div id="modalFooter" class="modal-footer"></div>
         </div>
     </div>
 
     <script>
+        // ── Theme ──────────────────────────────────────────────────────────────
+        const html = document.documentElement;
         const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
-        const body = document.body;
+        const themeLabel = document.getElementById('themeLabel');
+
+        function applyTheme(isDark) {
+            html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            themeIcon.textContent = isDark ? '🌙' : '☀️';
+            themeLabel.textContent = isDark ? 'Dark' : 'Light';
+            localStorage.setItem('darkMode', isDark);
+        }
+
+        function loadTheme() {
+            const saved = localStorage.getItem('darkMode');
+            const isDark = saved !== null ? saved === 'true' : true;
+            applyTheme(isDark);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            themeIcon.style.transform = 'rotate(360deg)';
+            setTimeout(() => { themeIcon.style.transform = ''; }, 500);
+            applyTheme(!isDark);
+        });
+
+        loadTheme();
+
+        // ── State ──────────────────────────────────────────────────────────────
         const fileTree = document.getElementById('fileTree');
-        const selectedCount = document.getElementById('selectedCount');
-        const totalCount = document.getElementById('totalCount');
-        const selectedSize = document.getElementById('selectedSize');
-        const totalSize = document.getElementById('totalSize');
+        const selectedCountEl = document.getElementById('selectedCount');
+        const totalCountEl = document.getElementById('totalCount');
+        const selectedSizeEl = document.getElementById('selectedSize');
+        const totalSizeEl = document.getElementById('totalSize');
         const selectAllBtn = document.getElementById('selectAllBtn');
+        const invertSelectionBtn = document.getElementById('invertSelectionBtn');
+        const selectEverythingBtn = document.getElementById('selectEverythingBtn');
         const submitBtn = document.getElementById('submitBtn');
         const pinEntry = document.getElementById('pinEntry');
         const pinInput = document.getElementById('pinInput');
@@ -653,172 +718,208 @@
         const modalTitle = document.getElementById('modalTitle');
         const modalBody = document.getElementById('modalBody');
         const modalFooter = document.getElementById('modalFooter');
+
         pinInput.focus();
+
         const urlParams = new Proxy(new URLSearchParams(window.location.search), {
-            get: (searchParams, prop) => searchParams.get(prop),
+            get: (sp, prop) => sp.get(prop),
         });
+
         if (urlParams.pin) {
-            pinInput.value = urlParams.pin
+            pinInput.value = urlParams.pin;
             setTimeout(() => submitPin.click(), 0);
         }
+
         let currentFolder = null;
         let files = [];
         let allowEdit = false;
 
-        function loadThemePreference() {
-            const savedTheme = localStorage.getItem('darkMode');
-            if (savedTheme !== null) {
-                const isDark = savedTheme === 'true';
-                body.classList.toggle('dark', isDark);
-                body.classList.toggle('light', !isDark);
-                themeToggle.checked = isDark;
-                themeIcon.textContent = isDark ? '☀️' : '🌙';
-            }
+        // ── Modal ──────────────────────────────────────────────────────────────
+        function openModal() {
+            reusableModal.style.display = 'flex';
         }
 
-        function toggleTheme() {
-            body.classList.toggle('dark');
-            body.classList.toggle('light');
-            const isDark = body.classList.contains('dark');
-            themeIcon.textContent = isDark ? '☀️' : '🌙';
-            themeIcon.classList.add('day-night-animation');
-            setTimeout(() => themeIcon.classList.remove('day-night-animation'), 1000);
-            localStorage.setItem('darkMode', isDark);
+        function closeModal() {
+            reusableModal.style.display = 'none';
         }
 
+        reusableModal.addEventListener('click', (e) => {
+            if (e.target === reusableModal) closeModal();
+        });
+
+        // ── Utilities ──────────────────────────────────────────────────────────
         function formatSize(size) {
             const units = ['B', 'KB', 'MB', 'GB', 'TB'];
             let i = 0;
-            while (size >= 1024 && i < units.length - 1) {
-                size /= 1024;
-                i++;
-            }
+            while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
             return `${size.toFixed(2)} ${units[i]}`;
         }
 
         function calculateFolderSize(folder) {
-            let totalSize = 0;
+            let total = 0;
             const queue = [folder];
-            while (queue.length > 0) {
+            while (queue.length) {
                 const node = queue.pop();
-                if (node.type === 'file') {
-                    totalSize += node.size;
-                } else if (node.children) {
-                    queue.push(...node.children);
-                }
+                if (node.type === 'file') total += node.size;
+                else if (node.children) queue.push(...node.children);
             }
-            return totalSize;
+            return total;
         }
 
+        function areAllChildrenSelected(folder) {
+            return folder.children.every(c => c.type === 'folder' ? areAllChildrenSelected(c) : c.selected);
+        }
+
+        function areSomeChildrenSelected(folder) {
+            return folder.children.some(c => c.type === 'folder' ? areSomeChildrenSelected(c) : c.selected);
+        }
+
+        // ── Find Parent (supports multi-root) ─────────────────────────────────
+        function findParentInTree(root, id) {
+            if (root.children) {
+                for (const child of root.children) {
+                    if (child.id === id) return root;
+                    const found = findParentInTree(child, id);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function findParent(id) {
+            for (const root of files) {
+                const found = findParentInTree(root, id);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        // ── Stats ─────────────────────────────────────────────────────────────
+        function calculateStats(nodes) {
+            let selCount = 0, totCount = 0, selSize = 0, totSize = 0;
+            const queue = [...nodes];
+            while (queue.length) {
+                const node = queue.pop();
+                if (node.type === 'file') {
+                    totCount++; totSize += node.size;
+                    if (node.selected) { selCount++; selSize += node.size; }
+                }
+                if (node.children) queue.push(...node.children);
+            }
+            return { selCount, totCount, selSize, totSize };
+        }
+
+        function updateStats() {
+            const s = calculateStats(files);
+            selectedCountEl.textContent = s.selCount;
+            totalCountEl.textContent = s.totCount;
+            selectedSizeEl.textContent = formatSize(s.selSize);
+            totalSizeEl.textContent = formatSize(s.totSize);
+        }
+
+        // ── Render ─────────────────────────────────────────────────────────────
         function renderFileTree(nodes) {
             fileTree.innerHTML = '';
+
             if (currentFolder) {
-                const backButton = document.createElement('div');
-                backButton.className = 'file-tree-item folder';
-                backButton.innerHTML = '<span class="icon">📁</span><span>Back</span>';
-                backButton.addEventListener('click', goBack);
-                fileTree.appendChild(backButton);
-            }
-            nodes.forEach(node => {
+                const back = document.createElement('div');
+                back.className = 'file-tree-item back-btn';
+                back.innerHTML = `<span style="margin-right:0.5rem;">←</span> Back`;
+                back.addEventListener('click', goBack);
+                fileTree.appendChild(back);
+
                 const div = document.createElement('div');
-                div.className = 'file-tree-item';
-                const checkboxWrapper = document.createElement('div');
-                checkboxWrapper.className = 'checkbox-wrapper';
+                div.className = 'divider';
+                fileTree.appendChild(div);
+            }
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = node.id;
-                checkbox.checked = node.selected;
-                checkbox.addEventListener('change', () => toggleFile(node));
+            nodes.forEach(node => {
+                const item = document.createElement('div');
+                item.className = 'file-tree-item';
 
-                checkboxWrapper.appendChild(checkbox);
+                // Checkbox
+                const cbWrap = document.createElement('div');
+                cbWrap.className = 'checkbox-wrapper';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = node.id;
+                cb.checked = node.selected;
+                if (node.type === 'folder') {
+                    if (areAllChildrenSelected(node)) cb.checked = true;
+                    else if (areSomeChildrenSelected(node)) cb.indeterminate = true;
+                    else cb.checked = false;
+                }
+                cb.addEventListener('change', () => toggleFile(node));
+                cbWrap.appendChild(cb);
 
+                // Icon
                 const icon = document.createElement('span');
-                icon.className = 'icon';
+                icon.className = 'item-icon';
                 icon.textContent = node.type === 'folder' ? '📁' : '📄';
 
-                const fileInfo = document.createElement('div');
-                fileInfo.className = 'file-info';
+                // Info
+                const info = document.createElement('div');
+                info.className = 'file-info';
 
-                const nameElement = document.createElement('div');
-                nameElement.className = 'file-name cursor-pointer';
-                nameElement.textContent = node.name;
+                const nameEl = document.createElement('div');
+                nameEl.className = node.type === 'folder' ? 'file-name folder-name' : 'file-name';
+                nameEl.textContent = node.name;
 
-                const sizeInfo = document.createElement('div');
-                sizeInfo.className = 'size-info';
-                const size = node.type === 'folder' ? calculateFolderSize(node) : node.size;
-                if (node.type === 'folder') {
-                    sizeInfo.textContent = `${formatSize(size)}`;
-                } else {
-                    sizeInfo.textContent = `${formatSize(size)}`;
-                    if (allowEdit) {
-                        const editBtn = document.createElement('span');
-                        editBtn.textContent = ' ✏️ Edit';
-                        editBtn.className = 'edit-btn';
-                        sizeInfo.appendChild(editBtn);
-                    }
-                    if (node.progress !== undefined) {
-                        const progressText = document.createElement('span');
-                        progressText.textContent = ` • ${node.progress}%`;
-                        sizeInfo.appendChild(progressText);
-                    }
+                const sizeEl = document.createElement('div');
+                sizeEl.className = 'size-info';
+                const sz = node.type === 'folder' ? calculateFolderSize(node) : node.size;
+                sizeEl.textContent = formatSize(sz);
+
+                if (node.type === 'file' && node.progress !== undefined) {
+                    const prog = document.createElement('span');
+                    prog.textContent = `• ${node.progress}%`;
+                    sizeEl.appendChild(prog);
                 }
-                div.addEventListener('click', (event) => {
-                    if (event.target.className === 'file-name cursor-pointer') {
-                        toggleFile(node)
-                    } else if (event.target.className === 'edit-btn') {
-                        openEditFileNameModal(node)
-                    }
-                })
 
-                fileInfo.appendChild(nameElement);
-                fileInfo.appendChild(sizeInfo);
+                if (allowEdit) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = 'edit-btn';
+                    editBtn.textContent = '✏️ rename';
+                    editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditFileNameModal(node); });
+                    sizeEl.appendChild(editBtn);
+                }
 
-                div.appendChild(checkboxWrapper);
-                div.appendChild(icon);
-                div.appendChild(fileInfo);
+                info.appendChild(nameEl);
+                info.appendChild(sizeEl);
 
-                if (node.type === 'folder') {
-                    nameElement.classList.add('folder', 'folder-name');
-                    nameElement.addEventListener('click', (e) => {
-                        e.preventDefault();
+                item.appendChild(cbWrap);
+                item.appendChild(icon);
+                item.appendChild(info);
+
+                // Click behavior
+                item.addEventListener('click', (e) => {
+                    if (e.target === cb || e.target.classList.contains('edit-btn')) return;
+                    if (node.type === 'folder' && e.target === nameEl) {
                         openFolder(node);
-                    });
-                    if (areAllChildrenSelected(node)) {
-                        checkbox.checked = true;
-                    } else if (areSomeChildrenSelected(node)) {
-                        checkbox.indeterminate = true;
+                    } else {
+                        toggleFile(node);
                     }
-                    if (allowEdit) {
-                        const editBtn = document.createElement('span');
-                        editBtn.textContent = ' ✏️ Edit';
-                        editBtn.className = 'edit-btn';
-                        sizeInfo.appendChild(editBtn);
-                    }
+                });
+
+                if (node.type === 'folder') {
+                    nameEl.style.cursor = 'pointer';
+                    nameEl.addEventListener('click', (e) => { e.stopPropagation(); openFolder(node); });
                 }
 
-                fileTree.appendChild(div);
+                fileTree.appendChild(item);
             });
+
             updateSelectAllButtonText();
             updateSelectEverythingButtonText();
         }
 
-        function areAllChildrenSelected(folder) {
-            return folder.children.every(child => child.type === 'folder' ? areAllChildrenSelected(child) : child.selected);
-        }
-
-        function areSomeChildrenSelected(folder) {
-            return folder.children.some(child => child.type === 'folder' ? areSomeChildrenSelected(child) : child.selected);
-        }
-
+        // ── Toggle ─────────────────────────────────────────────────────────────
         function toggleFile(node) {
             if (node.type === 'folder') {
-                const isSelected = !areAllChildrenSelected(node);
-                toggleFolder(node, isSelected);
+                toggleFolder(node, !areAllChildrenSelected(node));
             } else {
                 node.selected = !node.selected;
             }
-            updateParentFolders(node);
             updateStats();
             renderFileTree(currentFolder ? currentFolder.children : files);
         }
@@ -826,344 +927,259 @@
         function toggleFolder(folder, isSelected) {
             folder.selected = isSelected;
             const queue = [folder];
-            while (queue.length > 0) {
-                const node = queue.pop();
-                if (node.type === 'file') {
-                    node.selected = isSelected;
-                } else if (node.children) {
-                    node.selected = isSelected;
-                    queue.push(...node.children);
-                }
+            while (queue.length) {
+                const n = queue.pop();
+                n.selected = isSelected;
+                if (n.children) queue.push(...n.children);
             }
         }
 
-        function updateParentFolders(node) {
-            let parent = findParent(files[0], node.id);
-            while (parent) {
-                parent.selected = areAllChildrenSelected(parent);
-                parent = findParent(files[0], parent.id);
-            }
-        }
-
-        function findParent(root, id) {
-            if (root.children) {
-                for (const child of root.children) {
-                    if (child.id === id) {
-                        return root;
-                    }
-                    const found = findParent(child, id);
-                    if (found) return found;
-                }
-            }
-            return null;
-        }
-
-        function updateStats() {
-            const stats = calculateStats(files);
-            selectedCount.textContent = stats.selectedCount;
-            totalCount.textContent = stats.totalCount;
-            selectedSize.textContent = formatSize(stats.selectedSize);
-            totalSize.textContent = formatSize(stats.totalSize);
-        }
-
-        function calculateStats(nodes) {
-            let selectedCount = 0;
-            let totalCount = 0;
-            let selectedSize = 0;
-            let totalSize = 0;
-
-            const queue = [...nodes];
-            while (queue.length > 0) {
-                const node = queue.pop();
-                if (node.type === 'file') {
-                    totalCount++;
-                    totalSize += node.size;
-                    if (node.selected) {
-                        selectedCount++;
-                        selectedSize += node.size;
-                    }
-                }
-                if (node.children) {
-                    queue.push(...node.children);
-                }
-            }
-
-            return { selectedCount, totalCount, selectedSize, totalSize };
-        }
-
+        // ── Navigation ────────────────────────────────────────────────────────
         function openFolder(folder) {
             currentFolder = folder;
             renderFileTree(folder.children);
-            updateStats();
         }
 
         function goBack() {
-            if (currentFolder) {
-                const parent = findParent(files[0], currentFolder.id);
-                if (parent) {
-                    currentFolder = parent;
-                    renderFileTree(parent.children);
-                } else {
-                    currentFolder = null;
-                    renderFileTree(files);
-                }
-                updateStats();
-            }
+            if (!currentFolder) return;
+            const parent = findParent(currentFolder.id);
+            currentFolder = parent || null;
+            renderFileTree(parent ? parent.children : files);
+            updateStats();
         }
 
+        // ── Select Actions ────────────────────────────────────────────────────
         function selectAll() {
             const nodes = currentFolder ? currentFolder.children : files;
-            const allSelected = nodes.every(node => node.type === 'folder' ? areAllChildrenSelected(node) : node.selected);
-            nodes.forEach(node => {
-                if (node.type === 'folder') {
-                    toggleFolder(node, !allSelected);
-                } else {
-                    node.selected = !allSelected;
-                }
-            });
+            const allSel = nodes.every(n => n.type === 'folder' ? areAllChildrenSelected(n) : n.selected);
+            nodes.forEach(n => n.type === 'folder' ? toggleFolder(n, !allSel) : (n.selected = !allSel));
             updateStats();
             renderFileTree(nodes);
-            updateSelectAllButtonText();
         }
 
         function invertSelection() {
             const nodes = currentFolder ? currentFolder.children : files;
-            nodes.forEach(node => {
-                if (node.type === 'folder') {
-                    invertFolderSelection(node);
-                } else {
-                    node.selected = !node.selected;
-                }
-            });
+            function invertNode(n) {
+                if (n.type === 'file') { n.selected = !n.selected; }
+                else if (n.children) { n.children.forEach(invertNode); }
+            }
+            nodes.forEach(invertNode);
             updateStats();
             renderFileTree(nodes);
         }
 
-        function invertFolderSelection(folder) {
-            folder.selected = !folder.selected;
-            if (folder.children) {
-                folder.children.forEach(child => {
-                    if (child.type === 'folder') {
-                        invertFolderSelection(child);
-                    } else {
-                        child.selected = !child.selected;
-                    }
-                });
-            }
-        }
-
         function selectEverything() {
-            const allSelected = files.every(node => node.type === 'folder' ? areAllChildrenSelected(node) : node.selected);
-            function recursiveSelect(nodes, select) {
-                nodes.forEach(node => {
-                    if (node.type === 'folder') {
-                        node.selected = select;
-                        if (node.children) {
-                            recursiveSelect(node.children, select);
-                        }
-                    } else {
-                        node.selected = select;
-                    }
-                });
+            const s = calculateStats(files);
+            const allSel = s.selCount === s.totCount && s.totCount > 0;
+            function recurse(nodes, val) {
+                nodes.forEach(n => { n.selected = val; if (n.children) recurse(n.children, val); });
             }
-            recursiveSelect(files, !allSelected);
+            recurse(files, !allSel);
             updateStats();
             renderFileTree(currentFolder ? currentFolder.children : files);
-            updateSelectEverythingButtonText();
         }
 
-        function getFullPath(node) {
-            const path = [];
-            let currentNode = findParent(files[0], node.id);
-            while (currentNode) {
-                path.unshift(currentNode.name);
-                currentNode = findParent(files[0], currentNode.id);
-            }
-            return path.length > 0 ? path.join('/') : '';
-        }
-
-        function openEditFileNameModal(node) {
-            modalTitle.textContent = `Edit ${node.type === 'folder' ? 'Folder' : 'File'} Name`;
-            modalBody.innerHTML = `
-                <input type="text" id="editNameInput" class="edit-name-input" value="${node.name}">
-            `;
-            modalFooter.innerHTML = `
-                <button class="btn btn-secondary" onClick="closeModal()">Cancel</button>
-                <button id="saveNameBtn" class="btn btn-primary">Save</button>
-            `;
-
-            const saveNameBtn = document.getElementById('saveNameBtn');
-            const editNameInput = document.getElementById('editNameInput');
-
-            saveNameBtn.addEventListener('click', () => {
-                closeModal();
-                const newName = editNameInput.value.trim();
-                if (newName && newName !== node.name) {
-                    const fullPath = getFullPath(node);
-                    const requestUrl = `/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=rename`;
-                    const body = {
-                        old_path: fullPath ? `${fullPath}/${node.name}` : node.name,
-                        new_path: fullPath ? `${fullPath}/${newName}` : newName,
-                        type: node.type,
-                    };
-                    fetch(requestUrl, {
-                        'method': 'POST',
-                        'body': JSON.stringify(body),
-                    }).then(response => {
-                        if (response.ok) {
-                            modalTitle.textContent = '✅ Success!';
-                            modalBody.innerHTML = '<p>Your rename has been submitted successfully.</p>';
-                            node.name = newName;
-                            renderFileTree(currentFolder ? currentFolder.children : files);
-                        } else {
-                            modalTitle.textContent = '❌ Error';
-                            modalBody.innerHTML = '<p>There was an error submitting your rename. Please try again.</p>';
-                        }
-                        modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Okay</button>';
-                        openModal();
-                    });
-                }
-            });
-
-            editNameInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    saveNameBtn.click();
-                }
-            });
-
-            openModal();
-            editNameInput.setSelectionRange(editNameInput.value.length, editNameInput.value.length)
-            editNameInput.focus();
-        }
-
-        function openModal() {
-            reusableModal.style.display = 'flex';
-            reusableModal.style.alignItems = 'center';
-            reusableModal.style.justifyContent = 'center';
-        }
-
-        function closeModal() {
-            reusableModal.style.display = 'none';
-        }
-
-        function submitData() {
-            if (parseInt(selectedCount.innerText) === 0) {
-                modalTitle.textContent = '⚠️ No Files Selected';
-                modalBody.innerHTML = '<p>Please select at least one file to proceed.</p>';
-                modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Okay</button>';
-                openModal();
-                return;
-            }
-            modalTitle.textContent = '⏳ Processing...';
-            modalBody.innerHTML = `<p>Submitting <strong>${selectedCount.innerText}</strong> file(s)...</p>`;
-            modalFooter.innerHTML = '';
-            openModal();
-            const requestUrl = `/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=selection`;
-            fetch(requestUrl, { 'method': 'POST', 'body': JSON.stringify(files) }).then(response => {
-                if (reusableModal.style.display !== 'none') {
-                    closeModal();
-                }
-                if (response.ok) {
-                    modalTitle.textContent = '✅ Success!';
-                    modalBody.innerHTML = '<p>Your selection has been submitted successfully.</p>';
-                } else {
-                    modalTitle.textContent = '❌ Error';
-                    modalBody.innerHTML = '<p>An error occurred while submitting your selection. Please try again.</p>';
-                }
-                modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Okay</button>';
-                openModal();
-            });
-        }
-
-        pinInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                submitPin.click();
-            }
-        });
-
-        submitPin.addEventListener('click', () => {
-            pinInput.blur();
-            if (pinInput.value === '') {
-                modalTitle.textContent = '⚠️ Missing PIN';
-                modalBody.innerHTML = `<p>Please enter your PIN to continue.</p>`;
-                modalFooter.innerHTML = '<button class="btn btn-primary" onClick="closeModal()">Try Again</button>';
-                openModal();
-                return false;
-            }
-            if (urlParams.gid == null || urlParams.gid === '') {
-                modalTitle.textContent = '⚠️ Missing Parameter';
-                modalBody.innerHTML = `<p>The parameter <strong>gid</strong> is missing.</p>`;
-                modalFooter.innerHTML = '<button class="btn btn-primary" onClick="closeModal()">Try Again</button>';
-                openModal();
-                return false;
-            }
-            const requestUrl = `/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=get`;
-            fetch(requestUrl).then(function (response) {
-                if (response.ok) {
-                    return response.json().then(data => {
-                        if (data.error) {
-                            modalTitle.textContent = '❌ ' + data.error;
-                            modalBody.innerHTML = `<p>${data.message}. Please try again.</p>`;
-                            modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Retry</button>';
-                            openModal();
-                        } else {
-                            files = data.files;
-                            allowEdit = data.engine === "qbittorrent";
-                            pinEntry.classList.add('fadeOut');
-                            setTimeout(() => {
-                                pinEntry.style.display = 'none';
-                                fileManager.classList.remove('hidden');
-                                renderFileTree(files);
-                                updateStats();
-                                updateSelectAllButtonText();
-                                updateSelectEverythingButtonText();
-                            }, 500)
-                        }
-                    });
-                } else {
-                    modalTitle.textContent = '❌ Connection Error';
-                    modalBody.innerHTML = '<p>Check console. Status Code: ' + response.status + '</p>';
-                    modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Retry</button>';
-                    openModal();
-                }
-            }).catch(error => {
-                modalTitle.textContent = '❌ Server Error';
-                modalBody.innerHTML = '<p>There was an error connecting to the server.</p><p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.8;">' + error.message + '</p>';
-                modalFooter.innerHTML = '<button class="btn btn-primary" onclick="closeModal()">Retry</button>';
-                openModal();
-            });
-        });
-
-        themeToggle.addEventListener('change', toggleTheme);
-        const invertSelectionBtn = document.getElementById('invertSelectionBtn');
-        const selectEverythingBtn = document.getElementById('selectEverythingBtn');
-
-        invertSelectionBtn.addEventListener('click', invertSelection);
-        selectEverythingBtn.addEventListener('click', selectEverything);
-
-        selectAllBtn.addEventListener('click', selectAll);
-        selectEverythingBtn.addEventListener('click', selectEverything);
-        submitBtn.addEventListener('click', submitData);
-
-        reusableModal.addEventListener('click', (event) => {
-            if (event.target === reusableModal) {
-                closeModal();
-            }
-        });
-
+        // ── Button Labels ─────────────────────────────────────────────────────
         function updateSelectAllButtonText() {
             const nodes = currentFolder ? currentFolder.children : files;
-            const allSelected = nodes.every(node => node.type === 'folder' ? areAllChildrenSelected(node) : node.selected);
-            selectAllBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+            const allSel = nodes.every(n => n.type === 'folder' ? areAllChildrenSelected(n) : n.selected);
+            selectAllBtn.textContent = allSel ? 'Deselect Folder' : 'This Folder';
         }
 
         function updateSelectEverythingButtonText() {
-            const allSelected = selectedCount.innerText === totalCount.innerText && parseInt(totalCount.innerText) > 0;
-            selectEverythingBtn.textContent = allSelected ? 'Deselect All' : 'Select All';
+            const s = calculateStats(files);
+            const allSel = s.selCount === s.totCount && s.totCount > 0;
+            selectEverythingBtn.textContent = allSel ? 'Deselect All' : 'All Files';
         }
 
-        loadThemePreference();
+        // ── Path Utility ──────────────────────────────────────────────────────
+        function getFullPath(node) {
+            const path = [];
+            let parent = findParent(node.id);
+            while (parent) {
+                path.unshift(parent.name);
+                parent = findParent(parent.id);
+            }
+            return path.join('/');
+        }
+
+        // ── Edit Modal ────────────────────────────────────────────────────────
+        function openEditFileNameModal(node) {
+            modalTitle.textContent = `Rename ${node.type === 'folder' ? 'Folder' : 'File'}`;
+            modalBody.innerHTML = `<input type="text" id="editNameInput" class="edit-name-input" value="">`;
+            const editInput = document.getElementById('editNameInput');
+            editInput.value = node.name;
+
+            modalFooter.innerHTML = '';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-ghost';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = closeModal;
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn btn-primary';
+            saveBtn.textContent = 'Save';
+            saveBtn.onclick = () => {
+                const newName = editInput.value.trim();
+                if (!newName || newName === node.name) { closeModal(); return; }
+                closeModal();
+                const fullPath = getFullPath(node);
+                fetch(`/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=rename`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        old_path: fullPath ? `${fullPath}/${node.name}` : node.name,
+                        new_path: fullPath ? `${fullPath}/${newName}` : newName,
+                        type: node.type,
+                    }),
+                }).then(res => {
+                    if (res.ok) {
+                        node.name = newName;
+                        renderFileTree(currentFolder ? currentFolder.children : files);
+                        modalTitle.textContent = '✅ Renamed!';
+                        modalBody.innerHTML = '<p>File renamed successfully.</p>';
+                    } else {
+                        modalTitle.textContent = '❌ Error';
+                        modalBody.innerHTML = '<p>Could not rename. Please try again.</p>';
+                    }
+                    modalFooter.innerHTML = '';
+                    const ok = document.createElement('button');
+                    ok.className = 'btn btn-primary';
+                    ok.textContent = 'Okay';
+                    ok.onclick = closeModal;
+                    modalFooter.appendChild(ok);
+                    openModal();
+                });
+            };
+
+            editInput.addEventListener('keypress', e => { if (e.key === 'Enter') saveBtn.click(); });
+
+            modalFooter.appendChild(cancelBtn);
+            modalFooter.appendChild(saveBtn);
+            openModal();
+            setTimeout(() => {
+                editInput.focus();
+                editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+            }, 50);
+        }
+
+        // ── Submit ────────────────────────────────────────────────────────────
+        function submitData() {
+            const s = calculateStats(files);
+            if (s.selCount === 0) {
+                modalTitle.textContent = '⚠️ Nothing Selected';
+                modalBody.innerHTML = '<p>Please select at least one file to proceed.</p>';
+                modalFooter.innerHTML = '';
+                const ok = document.createElement('button');
+                ok.className = 'btn btn-primary'; ok.textContent = 'Got it'; ok.onclick = closeModal;
+                modalFooter.appendChild(ok);
+                openModal();
+                return;
+            }
+            modalTitle.textContent = '⏳ Submitting…';
+            modalBody.innerHTML = `<p>Sending <strong>${s.selCount}</strong> file(s)…</p>`;
+            modalFooter.innerHTML = '';
+            openModal();
+
+            fetch(`/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=selection`, {
+                method: 'POST',
+                body: JSON.stringify(files),
+            }).then(res => {
+                closeModal();
+                modalTitle.textContent = res.ok ? '✅ Done!' : '❌ Error';
+                modalBody.innerHTML = res.ok
+                    ? '<p>Your selection was submitted successfully.</p>'
+                    : '<p>An error occurred. Please try again.</p>';
+                const ok = document.createElement('button');
+                ok.className = 'btn btn-primary'; ok.textContent = 'Okay'; ok.onclick = closeModal;
+                modalFooter.innerHTML = '';
+                modalFooter.appendChild(ok);
+                openModal();
+            });
+        }
+
+        // ── PIN Submit ────────────────────────────────────────────────────────
+        pinInput.addEventListener('keypress', e => { if (e.key === 'Enter') submitPin.click(); });
+
+        submitPin.addEventListener('click', () => {
+            pinInput.blur();
+            if (!pinInput.value) {
+                modalTitle.textContent = '⚠️ Missing PIN';
+                modalBody.innerHTML = '<p>Please enter your PIN to continue.</p>';
+                modalFooter.innerHTML = '';
+                const ok = document.createElement('button');
+                ok.className = 'btn btn-primary'; ok.textContent = 'Try Again'; ok.onclick = closeModal;
+                modalFooter.appendChild(ok);
+                openModal();
+                return;
+            }
+            if (!urlParams.gid) {
+                modalTitle.textContent = '⚠️ Missing Parameter';
+                modalBody.innerHTML = '<p>The <strong>gid</strong> parameter is missing from the URL.</p>';
+                modalFooter.innerHTML = '';
+                const ok = document.createElement('button');
+                ok.className = 'btn btn-primary'; ok.textContent = 'Okay'; ok.onclick = closeModal;
+                modalFooter.appendChild(ok);
+                openModal();
+                return;
+            }
+
+            submitPin.textContent = '…';
+            submitPin.disabled = true;
+
+            fetch(`/app/files/torrent?gid=${urlParams.gid}&pin=${pinInput.value}&mode=get`)
+                .then(res => {
+                    if (res.ok) {
+                        return res.json().then(data => {
+                            if (data.error) {
+                                modalTitle.textContent = '❌ ' + data.error;
+                                modalBody.innerHTML = `<p>${data.message}. Please try again.</p>`;
+                                modalFooter.innerHTML = '';
+                                const ok = document.createElement('button');
+                                ok.className = 'btn btn-primary'; ok.textContent = 'Retry'; ok.onclick = closeModal;
+                                modalFooter.appendChild(ok);
+                                openModal();
+                            } else {
+                                files = data.files;
+                                allowEdit = data.engine === 'qbittorrent';
+                                pinEntry.classList.add('fadeOut');
+                                setTimeout(() => {
+                                    pinEntry.style.display = 'none';
+                                    fileManager.classList.remove('hidden');
+                                    renderFileTree(files);
+                                    updateStats();
+                                }, 400);
+                            }
+                        });
+                    } else {
+                        modalTitle.textContent = '❌ Connection Error';
+                        modalBody.innerHTML = `<p>Server returned status ${res.status}. Check the console for details.</p>`;
+                        modalFooter.innerHTML = '';
+                        const ok = document.createElement('button');
+                        ok.className = 'btn btn-primary'; ok.textContent = 'Retry'; ok.onclick = closeModal;
+                        modalFooter.appendChild(ok);
+                        openModal();
+                    }
+                })
+                .catch(err => {
+                    modalTitle.textContent = '❌ Server Error';
+                    modalBody.innerHTML = `<p>Could not connect to the server.</p><p style="font-size:0.82rem;margin-top:0.5rem;opacity:0.7;">${err.message}</p>`;
+                    modalFooter.innerHTML = '';
+                    const ok = document.createElement('button');
+                    ok.className = 'btn btn-primary'; ok.textContent = 'Retry'; ok.onclick = closeModal;
+                    modalFooter.appendChild(ok);
+                    openModal();
+                })
+                .finally(() => {
+                    submitPin.textContent = 'Continue →';
+                    submitPin.disabled = false;
+                });
+        });
+
+        // ── Button Events ─────────────────────────────────────────────────────
+        selectAllBtn.addEventListener('click', selectAll);
+        invertSelectionBtn.addEventListener('click', invertSelection);
+        selectEverythingBtn.addEventListener('click', selectEverything);
+        submitBtn.addEventListener('click', submitData);
     </script>
 </body>
-
 </html>
