@@ -90,7 +90,7 @@ async def re_verify(paused, resumed, hash_id):
 
 @app.get("/app/files", response_class=HTMLResponse)
 async def files(request: Request):
-    return templates.TemplateResponse(request, "page.html")
+    return templates.TemplateResponse(request, "selector_page.html")
 
 
 @app.api_route(
@@ -242,11 +242,10 @@ async def set_aria2(gid, selected_files):
 
 
 @app.get("/", response_class=HTMLResponse)
-async def homepage():
-    return (
-        "<h1>See mirror-leech-telegram-bot "
-        "<a href='https://www.github.com/anasty17/mirror-leech-telegram-bot'>@GitHub</a> "
-        "By <a href='https://github.com/anasty17'>Anas</a></h1>"
+async def homepage(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "home_page.html"
     )
 
 

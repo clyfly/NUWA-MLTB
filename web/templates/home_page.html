@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clyfly Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root { --transition: 0.4s ease; }
+
+        [data-theme="dark"] {
+            --bg-base: linear-gradient(135deg, #0d1117 0%, #161e2e 50%, #0d1117 100%);
+            --bg-surface: rgba(22, 30, 46, 0.85);
+            --bg-surface-hover: rgba(30, 40, 62, 0.95);
+            --bg-input: rgba(255,255,255,0.06);
+            --bg-input-focus: rgba(99,102,241,0.12);
+            --border: rgba(255,255,255,0.1);
+            --border-hover: rgba(255,255,255,0.18);
+            --text-primary: #e8eaf0;
+            --text-secondary: #8b93a7;
+            --text-muted: #5a6478;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99,102,241,0.25);
+            --header-bg: rgba(10, 14, 26, 0.9);
+            --footer-bg: rgba(10, 14, 26, 0.9);
+            --shadow-card: 0 2px 20px rgba(0,0,0,0.3);
+            --overlay: radial-gradient(ellipse at 15% 40%, rgba(99,102,241,0.08) 0%, transparent 55%),
+                        radial-gradient(ellipse at 85% 75%, rgba(139,92,246,0.06) 0%, transparent 55%);
+        }
+
+        [data-theme="light"] {
+            --bg-base: linear-gradient(135deg, #e8eaf6 0%, #ede7f6 50%, #e3f2fd 100%);
+            --bg-surface: rgba(255,255,255,0.52);
+            --bg-surface-hover: rgba(255,255,255,0.72);
+            --bg-input: rgba(255,255,255,0.45);
+            --bg-input-focus: rgba(99,102,241,0.1);
+            --border: rgba(255,255,255,0.75);
+            --border-hover: rgba(255,255,255,0.95);
+            --text-primary: #1a1f2e;
+            --text-secondary: #4a526a;
+            --text-muted: #8a94aa;
+            --accent: #4f52e0;
+            --accent-hover: #6366f1;
+            --accent-glow: rgba(99,102,241,0.2);
+            --header-bg: rgba(255,255,255,0.55);
+            --footer-bg: rgba(255,255,255,0.55);
+            --shadow-card: 0 4px 24px rgba(99,102,241,0.08);
+            --overlay: radial-gradient(ellipse at 15% 40%, rgba(99,102,241,0.12) 0%, transparent 55%),
+                        radial-gradient(ellipse at 85% 75%, rgba(139,92,246,0.1) 0%, transparent 55%);
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: background var(--transition), color var(--transition);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: var(--overlay);
+            pointer-events: none;
+            z-index: 0;
+            transition: background var(--transition);
+        }
+
+        /* ── Header ── */
+        header {
+            background: var(--header-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1.1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .brand-logo {
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            text-decoration: none;
+        }
+
+        .brand-logo .bolt {
+            font-size: 1.2rem;
+            filter: drop-shadow(0 0 6px var(--accent-glow));
+        }
+
+        /* ── Theme Toggle ── */
+        .theme-toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 2rem;
+            padding: 0.3rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .theme-toggle-wrap:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-surface-hover);
+        }
+
+        .theme-icon { font-size: 1rem; transition: transform 0.5s ease; }
+        .theme-label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.3px; }
+
+        /* ── Main ── */
+        main {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 1rem;
+        }
+
+        /* ── Hero ── */
+        .hero {
+            text-align: center;
+            max-width: 600px;
+            margin-bottom: 3.5rem;
+            animation: slideUp 0.6s ease;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 2rem;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.4px;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title {
+            font-size: clamp(2.4rem, 6vw, 3.8rem);
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-hover) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 2rem;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 0.72rem 1.5rem;
+            border-radius: 0.875rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            transition: all 0.25s ease;
+            border: none;
+            letter-spacing: 0.2px;
+            text-decoration: none;
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 8px 28px var(--accent-glow);
+        }
+
+        .btn-ghost {
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        /* ── Feature Cards ── */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            max-width: 720px;
+            width: 100%;
+            animation: slideUp 0.7s ease 0.1s both;
+        }
+
+        .feature-card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            padding: 1.4rem 1.2rem;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-card);
+        }
+
+        .feature-card:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-hover);
+            transform: translateY(-3px);
+        }
+
+        .feature-icon {
+            font-size: 1.6rem;
+            margin-bottom: 0.65rem;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .feature-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ── Status Pill ── */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #34d399;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 6px #34d399;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.85); }
+        }
+
+        /* ── Footer ── */
+        footer {
+            background: var(--footer-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: relative;
+            z-index: 10;
+            transition: background var(--transition), border-color var(--transition);
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .social-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .social-button:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+            transform: scale(1.1) translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        /* ── Animations ── */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 480px) {
+            .features { grid-template-columns: 1fr 1fr; }
+            .hero-actions { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 260px; }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container mx-auto px-4">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <a href="/" class="brand-logo">
+                    <span class="bolt">⚡</span>
+                    <span>Clyfly Bot</span>
+                </a>
+                <div class="theme-toggle-wrap" id="themeToggle">
+                    <span class="theme-icon" id="themeIcon">🌙</span>
+                    <span class="theme-label" id="themeLabel">Dark</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero -->
+        <div class="hero">
+            <div class="hero-badge">
+                <div class="status-dot"></div>
+                <span class="status-pill">Online & Ready</span>
+            </div>
+            <h1 class="hero-title">Mirror. Leech.<br>Done.</h1>
+            <p class="hero-subtitle">
+                Telegram bot untuk mirror dan leech file dari internet ke Google Drive, Telegram, atau cloud lainnya — cepat, simpel, dari mana saja.
+            </p>
+            <div class="hero-actions">
+                <a href="https://t.me/zhsshibot" target="_blank" class="btn btn-primary">
+                    <i class="fab fa-telegram"></i> Open in Telegram
+                </a>
+                <a href="https://github.com/clyfly/NUWA-MLTB" target="_blank" class="btn btn-ghost">
+                    <i class="fab fa-github"></i> View Source
+                </a>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">🧲</span>
+                <div class="feature-title">Torrent & Magnet</div>
+                <div class="feature-desc">Download via qBittorrent atau Aria2c dengan file selector.</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">☁️</span>
+                <div class="feature-title">Cloud Upload</div>
+                <div class="feature-desc">Upload ke Google Drive atau cloud lain via rclone.</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">🔗</span>
+                <div class="feature-title">Direct Links</div>
+                <div class="feature-desc">Mirror dari direct link, YouTube, dan ratusan situs lainnya.</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📦</span>
+                <div class="feature-title">Archive Support</div>
+                <div class="feature-desc">Ekstrak dan kompres file dengan dukungan password.</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📡</span>
+                <div class="feature-title">Usenet / NZB</div>
+                <div class="feature-desc">Download dari Usenet via SABnzbd terintegrasi.</div>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">⚙️</span>
+                <div class="feature-title">Heroku Ready</div>
+                <div class="feature-desc">Deploy mudah di Heroku container stack tanpa VPS.</div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container mx-auto px-4">
+            <div class="footer-inner">
+                <p class="footer-copy">© 2024–2025 Clyfly Bot. All rights reserved.</p>
+                <div style="display:flex; gap:0.5rem;">
+                    <a href="https://github.com/clyfly/NUWA-MLTB" target="_blank" class="social-button" title="GitHub">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="https://t.me/zhsshibot" target="_blank" class="social-button" title="Telegram">
+                        <i class="fab fa-telegram"></i>
+                    </a>
+                    <a href="https://www.instagram.com" target="_blank" class="social-button" title="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const html = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeLabel = document.getElementById('themeLabel');
+
+        function applyTheme(isDark) {
+            html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            themeIcon.textContent = isDark ? '🌙' : '☀️';
+            themeLabel.textContent = isDark ? 'Dark' : 'Light';
+            localStorage.setItem('darkMode', isDark);
+        }
+
+        function loadTheme() {
+            const saved = localStorage.getItem('darkMode');
+            applyTheme(saved !== null ? saved === 'true' : true);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            themeIcon.style.transform = 'rotate(360deg)';
+            setTimeout(() => { themeIcon.style.transform = ''; }, 500);
+            applyTheme(!isDark);
+        });
+
+        loadTheme();
+    </script>
+</body>
+
+</html>
