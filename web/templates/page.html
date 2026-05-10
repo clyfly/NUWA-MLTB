@@ -560,6 +560,94 @@
             to { opacity: 0; transform: translateY(-10px); }
         }
 
+        /* ── Breadcrumb ── */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-bottom: 1rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .breadcrumb-item {
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+            padding: 0.2rem 0.35rem;
+            border-radius: 0.4rem;
+        }
+
+        .breadcrumb-item:hover {
+            color: var(--accent);
+            background: var(--bg-input-focus);
+        }
+
+        .breadcrumb-item.active {
+            color: var(--text-primary);
+            cursor: default;
+        }
+
+        .breadcrumb-item.active:hover {
+            background: none;
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            opacity: 0.5;
+        }
+
+        /* ── Search ── */
+        .search-wrap {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-wrap .search-icon {
+            position: absolute;
+            left: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        .search-wrap input {
+            padding-left: 2.4rem;
+            padding-right: 2.4rem;
+            margin-bottom: 0;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 0;
+            display: none;
+            transition: color 0.2s ease;
+        }
+
+        .search-clear:hover { color: var(--text-primary); }
+
+        .search-empty {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        .search-empty .emoji { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
         /* ── Section Heading ── */
         .section-heading {
             font-size: 1.25rem;
@@ -639,6 +727,16 @@
                 </div>
             </div>
 
+            <!-- Breadcrumb -->
+            <div id="breadcrumb" class="breadcrumb" style="display:none;"></div>
+
+            <!-- Search -->
+            <div class="search-wrap">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search files..." autocomplete="off" style="margin-bottom:0;">
+                <button class="search-clear" id="searchClear">✕</button>
+            </div>
+
             <!-- File Tree -->
             <div id="fileTree"></div>
         </div>
@@ -700,7 +798,167 @@
 
         loadTheme();
 
-        // ── State ──────────────────────────────────────────────────────────────
+        const searchInput = document.getElementById('searchInput');
+        const searchClear = document.getElementById('searchClear');
+        const breadcrumbEl = document.getElementById('breadcrumb');
+
+        // ── Breadcrumb ─────────────────────────────────────────────────────────
+        let folderStack = []; // track navigation path
+
+        function updateBreadcrumb() {
+            if (folderStack.length === 0) {
+                breadcrumbEl.style.display = 'none';
+                return;
+            }
+            breadcrumbEl.style.display = 'flex';
+            breadcrumbEl.innerHTML = '';
+
+            // Root
+            const root = document.createElement('span');
+            root.className = 'breadcrumb-item';
+            root.textContent = '⚡ Root';
+            root.addEventListener('click', () => {
+                folderStack = [];
+                currentFolder = null;
+                searchInput.value = '';
+                searchClear.style.display = 'none';
+                updateBreadcrumb();
+                renderFileTree(files);
+                updateStats();
+            });
+            breadcrumbEl.appendChild(root);
+
+            folderStack.forEach((folder, i) => {
+                const sep = document.createElement('span');
+                sep.className = 'breadcrumb-sep';
+                sep.textContent = '›';
+                breadcrumbEl.appendChild(sep);
+
+                const item = document.createElement('span');
+                item.className = i === folderStack.length - 1 ? 'breadcrumb-item active' : 'breadcrumb-item';
+                item.textContent = folder.name;
+
+                if (i < folderStack.length - 1) {
+                    item.addEventListener('click', () => {
+                        folderStack = folderStack.slice(0, i + 1);
+                        currentFolder = folder;
+                        searchInput.value = '';
+                        searchClear.style.display = 'none';
+                        updateBreadcrumb();
+                        renderFileTree(folder.children);
+                        updateStats();
+                    });
+                }
+                breadcrumbEl.appendChild(item);
+            });
+        }
+
+        // ── Search ─────────────────────────────────────────────────────────────
+        let searchQuery = '';
+
+        function searchAllFiles(nodes, query) {
+            const results = [];
+            const q = query.toLowerCase();
+            const queue = [...nodes];
+            while (queue.length) {
+                const node = queue.pop();
+                if (node.type === 'file' && node.name.toLowerCase().includes(q)) {
+                    results.push(node);
+                }
+                if (node.children) queue.push(...node.children);
+            }
+            return results;
+        }
+
+        searchInput.addEventListener('input', () => {
+            searchQuery = searchInput.value.trim();
+            searchClear.style.display = searchQuery ? 'block' : 'none';
+            if (searchQuery) {
+                const results = searchAllFiles(currentFolder ? currentFolder.children : files, searchQuery);
+                renderSearchResults(results, searchQuery);
+            } else {
+                renderFileTree(currentFolder ? currentFolder.children : files);
+            }
+        });
+
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            searchQuery = '';
+            searchClear.style.display = 'none';
+            renderFileTree(currentFolder ? currentFolder.children : files);
+            searchInput.focus();
+        });
+
+        function highlightText(text, query) {
+            if (!query) return text;
+            const idx = text.toLowerCase().indexOf(query.toLowerCase());
+            if (idx === -1) return text;
+            return (
+                text.slice(0, idx) +
+                `<mark style="background:var(--accent-glow);color:var(--accent);border-radius:3px;padding:0 2px;">${text.slice(idx, idx + query.length)}</mark>` +
+                text.slice(idx + query.length)
+            );
+        }
+
+        function renderSearchResults(results, query) {
+            fileTree.innerHTML = '';
+            if (results.length === 0) {
+                fileTree.innerHTML = `
+                    <div class="search-empty">
+                        <span class="emoji">🔍</span>
+                        No files matching <strong>"${query}"</strong>
+                    </div>`;
+                return;
+            }
+
+            results.forEach(node => {
+                const item = document.createElement('div');
+                item.className = 'file-tree-item';
+
+                const cbWrap = document.createElement('div');
+                cbWrap.className = 'checkbox-wrapper';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = node.selected;
+                cb.addEventListener('change', () => {
+                    node.selected = cb.checked;
+                    updateStats();
+                });
+                cbWrap.appendChild(cb);
+
+                const icon = document.createElement('span');
+                icon.className = 'item-icon';
+                icon.textContent = '📄';
+
+                const info = document.createElement('div');
+                info.className = 'file-info';
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'file-name';
+                nameEl.innerHTML = highlightText(node.name, query);
+
+                const sizeEl = document.createElement('div');
+                sizeEl.className = 'size-info';
+                sizeEl.textContent = formatSize(node.size);
+
+                info.appendChild(nameEl);
+                info.appendChild(sizeEl);
+                item.appendChild(cbWrap);
+                item.appendChild(icon);
+                item.appendChild(info);
+
+                item.addEventListener('click', (e) => {
+                    if (e.target === cb) return;
+                    node.selected = !node.selected;
+                    cb.checked = node.selected;
+                    updateStats();
+                });
+
+                fileTree.appendChild(item);
+            });
+        }
+
+
         const fileTree = document.getElementById('fileTree');
         const selectedCountEl = document.getElementById('selectedCount');
         const totalCountEl = document.getElementById('totalCount');
@@ -937,13 +1195,23 @@
         // ── Navigation ────────────────────────────────────────────────────────
         function openFolder(folder) {
             currentFolder = folder;
+            folderStack.push(folder);
+            searchInput.value = '';
+            searchQuery = '';
+            searchClear.style.display = 'none';
+            updateBreadcrumb();
             renderFileTree(folder.children);
         }
 
         function goBack() {
             if (!currentFolder) return;
-            const parent = findParent(currentFolder.id);
-            currentFolder = parent || null;
+            folderStack.pop();
+            const parent = folderStack.length > 0 ? folderStack[folderStack.length - 1] : null;
+            currentFolder = parent;
+            searchInput.value = '';
+            searchQuery = '';
+            searchClear.style.display = 'none';
+            updateBreadcrumb();
             renderFileTree(parent ? parent.children : files);
             updateStats();
         }
@@ -1141,10 +1409,14 @@
                             } else {
                                 files = data.files;
                                 allowEdit = data.engine === 'qbittorrent';
+                                folderStack = [];
+                                searchInput.value = '';
+                                searchQuery = '';
                                 pinEntry.classList.add('fadeOut');
                                 setTimeout(() => {
                                     pinEntry.style.display = 'none';
                                     fileManager.classList.remove('hidden');
+                                    updateBreadcrumb();
                                     renderFileTree(files);
                                     updateStats();
                                 }, 400);
