@@ -39,4 +39,9 @@ async def ping(_, message):
 
 @new_task
 async def log(_, message):
-    await send_file(message, "log.txt")
+    try:
+        with open("log.txt", "r") as f:
+            log = f.read()[-4000:]
+        await send_message(message, f"<code>{log}</code>")
+    except:
+        await send_message(message, "❌ Error reading log")
