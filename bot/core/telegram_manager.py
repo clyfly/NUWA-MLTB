@@ -1,6 +1,7 @@
 from pyrogram import Client, enums
+from pyrogram.errors import FloodWait
 from pyrogram.types import LinkPreviewOptions
-from asyncio import Lock
+from asyncio import Lock, sleep
 
 from .. import LOGGER
 from .config_manager import Config
@@ -33,7 +34,19 @@ class TgClient:
             sleep_threshold=0,
             link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
-        await cls.bot.start()
+        while True:
+            try:
+                await cls.bot.start()
+                break
+            except FloodWait as f:
+                wait = getattr(f, "x", None) or getattr(f, "value", None) or 600
+                LOGGER.error(
+                    f"FloodWait while starting bot, waiting {wait} seconds before retrying. {f}"
+                )
+                await sleep(wait + 5)
+            except Exception as e:
+                LOGGER.error(f"Failed to start bot client: {e}")
+                raise
         cls.NAME = cls.bot.me.username
 
     @classmethod
