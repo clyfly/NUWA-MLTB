@@ -123,6 +123,33 @@ On startup, `update.py` pulls the bot source into the `bot/` directory from the 
 
 ---
 
+## Koyeb Deployment
+
+This repo now supports deployment on Koyeb using the existing `Dockerfile`.
+
+### How to deploy on Koyeb
+
+1. Push the repository to GitHub.
+2. Create a new Koyeb app and choose "Deploy from a Git repository".
+3. Select this repository and use the root `Dockerfile` as the build context.
+4. Add the required environment variables in Koyeb:
+   - `BOT_TOKEN`
+   - `OWNER_ID`
+   - `TELEGRAM_API`
+   - `TELEGRAM_HASH`
+   - `UPSTREAM_REPO` (your repo URL, if you want automatic updates)
+   - `UPSTREAM_BRANCH` (default: `master`)
+   - `DATABASE_URL` (optional, for MongoDB persistence)
+
+### Notes for Koyeb
+
+- `config.py` is optional when deploying on Koyeb. The bot can start from environment variables if `config.py` is not present.
+- The `Dockerfile` now uses a standard Python container and installs required build dependencies.
+- If you need custom settings beyond the required environment variables, you can still add a local `config.py` in your repository.
+- The container exposes `8070` and `8080` so Koyeb can attach a web route if needed.
+
+---
+
 ## Configuration
 
 Copy `config_sample.py` to `config.py` and fill in the values. For the full list of all available variables, refer to `config_sample.py` directly.
