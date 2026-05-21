@@ -6,6 +6,10 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     git \
+    curl \
+    aria2 \
+    qbittorrent-nox \
+    sabnzbd \
     ffmpeg \
     libmagic1 \
     libmagic-dev \
@@ -16,6 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxslt1-dev \
     libjpeg-dev \
     zlib1g-dev \
+    && ln -s /usr/bin/aria2c /usr/local/bin/xria \
+    && ln -s /usr/bin/qbittorrent-nox /usr/local/bin/xnox \
+    && ln -s /usr/bin/sabnzbdplus /usr/local/bin/xnzb \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
