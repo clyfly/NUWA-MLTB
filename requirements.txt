@@ -24,12 +24,10 @@ pymongo
 kurigram
 python-magic
 requests
-telegraph
-tenacity
-tgcrypto
 urllib3
 uvicorn
 uvloop
 xattr
 gallery-dl
 yt-dlp[default,curl-cffi]
+speedtest-cli
