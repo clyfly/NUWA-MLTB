@@ -82,6 +82,7 @@ unauth - Unauthorize a user or chat
 shell - Run shell commands
 restart - Restart the bot
 stats - View bot usage statistics
+speedtest - Test the network speed
 ping - Ping the bot
 help - List all commands with descriptions
 ```
@@ -98,28 +99,42 @@ On startup, `update.py` pulls the bot source into the `bot/` directory from the 
 
 ### Deployment Steps
 
-1. **Fork this repository** to your own GitHub account.
+1. **Clone repository** to local:
+   ```bash
+   git clone https://github.com/clyfly/NUWA-MLTB.git nuwa
+   cd nuwa
+   ```
 
-2. **Delete the `bot/` folder** from your fork. It will be populated automatically at runtime via `UPSTREAM_REPO`.
+2. **Delete all folders** in your local clone (to keep it clean):
+   - delete all folders from the repo leaving only important files such as Dockerfile update.py heroku.yml update.sh & start.sh in here
 
-3. **Configure the bot:**
-   - Rename `config_sample.py` → `config.py`
-   - Fill in at least the required fields (see [Configuration](#configuration) below)
-   - Set `UPSTREAM_REPO` to your fork URL so the bot always pulls the latest version on restart
+3. **Configure config.py** and add supporting files such as:
+   - `cookies.txt` (for yt-dlp)
+   - `token.pickle` (for Google Drive auth)
+   - and others
 
-4. **Create a Heroku app** and connect it to your forked repository.
+4. **Create Heroku app** and set remote:
+   ```bash
+   heroku create your-app-name
+   heroku git:remote -a your-app-name
+   ```
 
-5. **Set the stack to container:**
+5. **Set stack to container** (REQUIRED):
    ```bash
    heroku stack:set container -a your-app-name
    ```
 
-6. **Deploy** via the Heroku dashboard (Connect to GitHub → Enable Automatic Deploys), or via CLI:
+6. **Deploy as usual** to Heroku:
    ```bash
    git push heroku master
    ```
 
-7. Confirm that `Dockerfile` and `heroku.yml` exist in the root of your repo — they should be there unless you deleted them. ✅
+7. **Check the console** to see if the bot is running or not:
+   ```bash
+   heroku logs --tail -a your-app-name
+   ```
+
+8. **Lastly, use your brain** — because it will be very useful for troubleshooting. 🧠
 
 ---
 
