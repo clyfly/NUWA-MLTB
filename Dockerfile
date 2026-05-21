@@ -42,5 +42,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8070
 EXPOSE 8080
-
 CMD ["bash", "start.sh"]
