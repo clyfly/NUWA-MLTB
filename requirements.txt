@@ -31,3 +31,4 @@ xattr
 gallery-dl
 yt-dlp[default,curl-cffi]
 speedtest-cli
+tenacity
