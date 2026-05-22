@@ -1,14 +1,15 @@
-asyncio
+aioaria2
 aiofiles
+aioqbt
 aioshutil
 anytree
 apscheduler
-aioaria2
-aioqbt
+asyncio
 cloudscraper
 dnspython
 fastapi
 feedparser
+gallery-dl
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
@@ -24,6 +25,7 @@ pymongo
 kurigram
 python-magic
 requests
+speedtest-cli
 telegraph
 tenacity
 tgcrypto
@@ -31,5 +33,4 @@ urllib3
 uvicorn
 uvloop
 xattr
-gallery-dl
-yt-dlp[default,curl-cffi]
+yt-dlp[default,curl-cffi]   
