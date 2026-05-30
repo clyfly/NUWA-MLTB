@@ -96,13 +96,16 @@ Note: Only mb and gb are supported or write in bytes without unit!"""
 
 upload = """<b>Upload Destination</b>: -up
 
-/cmd link -up rcl/gdl (rcl: to select rclone config, remote & path | gdl: To select token.pickle, gdrive id) using buttons
+/cmd link -up rc/gd/rcl/gdl/bh/gf (rcl: to select rclone config, remote & path | gdl: To select token.pickle, gdrive id | gf: upload to GoFile) using buttons
 You can directly add the upload path: -up remote:dir/subdir or -up Gdrive_id or -up id/username (telegram) or -up id/username|topic_id (telegram)
 If DEFAULT_UPLOAD is `rc` then you can pass up: `gd` to upload using gdrive tools to GDRIVE_ID.
 If DEFAULT_UPLOAD is `gd` then you can pass up: `rc` to upload to RCLONE_PATH.
+If DEFAULT_UPLOAD is `bh` or `gf` then you can pass up: `rc` to upload to RCLONE_PATH.
+If DEFAULT_UPLOAD is `gd` then you can pass up: `bh` to upload to BUZZHEAVIER or `gf` to upload to GoFile.
+GoFile uses GOFILE_API_KEY when configured; otherwise guest upload is used.
 
 If you want to add path or gdrive manually from your config/token (UPLOADED FROM USETTING) add mrcc: for rclone and mtp: before the path/gdrive_id without space.
-/cmd link -up mrcc:main:dump or -up mtp:gdrive_id <strong>or you can simply edit upload using owner/user token/config from usetting without adding mtp: or mrcc: before the upload path/id</strong>
+/cmd link -up mrcc:main:dump or -up mtp:gdrive_id <strong>OR you can simply edit upload using owner/user|token/config from usetting without adding mtp: or mrcc: before the upload path/id</strong>
 
 To add leech destination:
 -up id/@username/pm
@@ -284,6 +287,20 @@ Here I will explain how to use mltb.* which is reference to files you want to wo
 4. Fourth cmd: the input is mltb.audio so this cmd will work on all audios and the output is mltb.mp3 so the output extension is mp3.
 5. Fifth cmd: You can add telegram link for small size input like photo to set watermark"""
 
+alldebrid_arg = """<b>AllDebrid Unlock</b>: -ad
+
+/cmd link -ad
+Resolves filehost links (1fichier, rapidgator, mega, etc.) via the
+AllDebrid API before handing off to the existing direct downloader.
+
+Magnet/torrent inputs are also routed through AllDebrid when ``-ad``
+is set: the bot uploads the magnet (or replied <code>.torrent</code>
+file), waits for AllDebrid to finish torrenting, then downloads each
+file directly from AllDebrid CDNs. This bypasses aria2/qBittorrent
+entirely so dead torrents finish faster on a debrid plan.
+
+Requires <code>ALLDEBRID_API_KEY</code> in the bot configuration."""
+
 YT_HELP_DICT = {
     "main": yt,
     "New-Name": f"{new_name}\nNote: Don't add file extension",
@@ -359,6 +376,7 @@ MIRROR_HELP_DICT = {
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "AllDebrid": alldebrid_arg,
 }
 
 CLONE_HELP_DICT = {

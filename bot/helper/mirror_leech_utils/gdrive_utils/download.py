@@ -79,10 +79,8 @@ class GoogleDriveDownload(GoogleDriveHelper):
             async_to_sync(self.listener.on_download_error, err)
             self.listener.is_cancelled = True
         finally:
-            if self.listener.is_cancelled:
-                return
-            async_to_sync(self.listener.on_download_complete)
-            return
+            if not self.listener.is_cancelled:
+                async_to_sync(self.listener.on_download_complete)
 
     def _download_folder(self, folder_id, path, folder_name):
         folder_name = folder_name.replace("/", "")

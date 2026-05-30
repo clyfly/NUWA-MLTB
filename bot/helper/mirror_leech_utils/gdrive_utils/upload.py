@@ -88,18 +88,15 @@ class GoogleDriveUpload(GoogleDriveHelper):
                     self.service.files().delete(
                         fileId=dir_id, supportsAllDrives=True
                     ).execute()
-                return
-            elif self._is_errored:
-                return
-            async_to_sync(
-                self.listener.on_upload_complete,
-                link,
-                self.total_files,
-                self.total_folders,
-                mime_type,
-                dir_id=self.get_id_from_url(link),
-            )
-            return
+            elif not self._is_errored:
+                async_to_sync(
+                    self.listener.on_upload_complete,
+                    link,
+                    self.total_files,
+                    self.total_folders,
+                    mime_type,
+                    dir_id=self.get_id_from_url(link),
+                )
 
     def _upload_dir(self, input_directory, dest_id):
         list_dirs = listdir(input_directory)

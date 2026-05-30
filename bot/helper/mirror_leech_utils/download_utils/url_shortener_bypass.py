@@ -24,9 +24,7 @@ _CSRF_PATTERN = (
 
 
 def is_url_shortener(domain):
-    if not domain:
-        return False
-    return any(d in domain for d in _OUO_DOMAINS)
+    return any(d in domain for d in _OUO_DOMAINS) if domain else False
 
 
 def bypass_shortener(link):
@@ -38,9 +36,7 @@ def bypass_shortener(link):
 
 def _extract_csrf(html):
     m = search(_CSRF_PATTERN, html)
-    if not m:
-        return ""
-    return next((g for g in m.groups() if g), "")
+    return next((g for g in m.groups() if g), "") if m else ""
 
 
 def _ouo(link):

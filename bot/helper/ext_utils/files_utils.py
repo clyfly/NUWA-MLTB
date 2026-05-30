@@ -20,70 +20,109 @@ from .bot_utils import sync_to_async, cmd_exec
 from .exceptions import NotSupportedExtractionArchive
 
 ARCH_EXT = [
-    ".tar.bz2",
-    ".tar.gz",
-    ".bz2",
-    ".gz",
-    ".tar.xz",
-    ".tar",
-    ".tbz2",
-    ".tgz",
-    ".lzma2",
-    ".zip",
     ".7z",
-    ".z",
-    ".rar",
-    ".iso",
-    ".wim",
-    ".cab",
+    ".apfs",
+    ".apk",
     ".apm",
+    ".appx",
+    ".ar",
     ".arj",
+    ".asc",
+    ".avhdx",
+    ".b64",
+    ".bz2",
+    ".bzip2",
+    ".cab",
+    ".cbz",
     ".chm",
     ".cpio",
     ".cramfs",
-    ".deb",
-    ".dmg",
-    ".fat",
-    ".hfs",
-    ".lzh",
-    ".lzma",
-    ".mbr",
-    ".msi",
-    ".mslz",
-    ".nsis",
-    ".ntfs",
-    ".rpm",
-    ".squashfs",
-    ".udf",
-    ".vhd",
-    ".xar",
-    ".zst",
-    ".zstd",
-    ".cbz",
-    ".apfs",
-    ".ar",
-    ".qcow",
-    ".macho",
-    ".exe",
-    ".dll",
-    ".sys",
-    ".pmd",
-    ".swf",
-    ".swfc",
-    ".simg",
-    ".vdi",
-    ".vhdx",
-    ".vmdk",
-    ".gzip",
-    ".lzma86",
-    ".sha256",
-    ".sha512",
-    ".sha224",
-    ".sha384",
-    ".sha1",
-    ".md5",
     ".crc32",
     ".crc64",
+    ".deb",
+    ".dll",
+    ".dmg",
+    ".doc",
+    ".docx",
+    ".elf",
+    ".epub",
+    ".esd",
+    ".exe",
+    ".fat",
+    ".gpt",
+    ".gz",
+    ".gzip",
+    ".hfs",
+    ".ihex",
+    ".img",
+    ".iso",
+    ".jar",
+    ".lha",
+    ".lzh",
+    ".lzma",
+    ".lzma2",
+    ".lzma86",
+    ".macho",
+    ".mbr",
+    ".md5",
+    ".msi",
+    ".mslz",
+    ".msm",
+    ".msp",
+    ".nsis",
+    ".ntfs",
+    ".obj",
+    ".ods",
+    ".odt",
+    ".pkg",
+    ".pmd",
+    ".ppt",
+    ".pptx",
+    ".qcow",
+    ".qcow2",
+    ".qcow2c",
+    ".rar",
+    ".rpm",
+    ".sha1",
+    ".sha224",
+    ".sha256",
+    ".sha384",
+    ".sha512",
+    ".simg",
+    ".squashfs",
+    ".swf",
+    ".swfc",
+    ".swm",
+    ".sys",
+    ".tar",
+    ".tar.bz2",
+    ".tar.gz",
+    ".tar.xz",
+    ".taz",
+    ".tbz",
+    ".tbz2",
+    ".tgz",
+    ".tpz",
+    ".txz",
+    ".tzst",
+    ".udeb",
+    ".udf",
+    ".vdi",
+    ".vhd",
+    ".vhdx",
+    ".vmdk",
+    ".wim",
+    ".xar",
+    ".xip",
+    ".xls",
+    ".xlsx",
+    ".xpi",
+    ".xz",
+    ".z",
+    ".zip",
+    ".zipx",
+    ".zst",
+    ".zstd",
 ]
 
 
@@ -136,14 +175,16 @@ async def clean_all():
 
 async def clean_unwanted(opath):
     LOGGER.info(f"Cleaning unwanted files/folders: {opath}")
-    for dirpath, _, files in await sync_to_async(walk, opath, topdown=False):
+    walk_data = await sync_to_async(lambda: list(walk(opath, topdown=False)))
+    for dirpath, _, files in walk_data:
         for filee in files:
             f_path = ospath.join(dirpath, filee)
             if filee.strip().endswith(".parts") and filee.startswith("."):
                 await remove(f_path)
         if dirpath.strip().endswith(".unwanted"):
             await aiormtree(dirpath, ignore_errors=True)
-    for dirpath, _, files in await sync_to_async(walk, opath, topdown=False):
+    walk_data = await sync_to_async(lambda: list(walk(opath, topdown=False)))
+    for dirpath, _, files in walk_data:
         if not await listdir(dirpath):
             await rmdir(dirpath)
 
@@ -154,7 +195,8 @@ async def get_path_size(opath):
         if await aiopath.islink(opath):
             opath = await aioreadlink(opath)
         return await aiopath.getsize(opath)
-    for root, _, files in await sync_to_async(walk, opath):
+    walk_data = await sync_to_async(lambda: list(walk(opath)))
+    for root, _, files in walk_data:
         for f in files:
             abs_path = ospath.join(root, f)
             if await aiopath.islink(abs_path):
@@ -166,7 +208,8 @@ async def get_path_size(opath):
 async def count_files_and_folders(opath):
     total_files = 0
     total_folders = 0
-    for _, dirs, files in await sync_to_async(walk, opath):
+    walk_data = await sync_to_async(lambda: list(walk(opath)))
+    for _, dirs, files in walk_data:
         total_files += len(files)
         total_folders += len(dirs)
     return total_folders, total_files
@@ -183,13 +226,13 @@ def get_base_name(orig_path):
 
 
 async def create_recursive_symlink(source, destination):
-    if ospath.isdir(source):
+    if await aiopath.isdir(source):
         await aiomakedirs(destination, exist_ok=True)
         for item in await listdir(source):
             item_source = ospath.join(source, item)
             item_dest = ospath.join(destination, item)
             await create_recursive_symlink(item_source, item_dest)
-    elif ospath.isfile(source):
+    elif await aiopath.isfile(source):
         try:
             await symlink(source, destination)
         except FileExistsError:
@@ -208,7 +251,8 @@ def get_mime_type(file_path):
 
 
 async def remove_excluded_files(fpath, ee):
-    for root, _, files in await sync_to_async(walk, fpath):
+    walk_data = await sync_to_async(lambda: list(walk(fpath)))
+    for root, _, files in walk_data:
         if root.strip().endswith("/yt-dlp-thumb"):
             continue
         for f in files:
@@ -217,7 +261,8 @@ async def remove_excluded_files(fpath, ee):
 
 
 async def remove_non_included_files(fpath, ie):
-    for root, _, files in await sync_to_async(walk, fpath):
+    walk_data = await sync_to_async(lambda: list(walk(fpath)))
+    for root, _, files in walk_data:
         if root.strip().endswith("/yt-dlp-thumb"):
             continue
         for f in files:

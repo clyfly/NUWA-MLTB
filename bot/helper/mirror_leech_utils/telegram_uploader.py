@@ -53,7 +53,6 @@ class TelegramUploader:
         self._thumb = self._listener.thumb or f"thumbnails/{listener.user_id}.jpg"
         self._msgs_dict = {}
         self._corrupted = 0
-        self._is_corrupted = False
         self._media_dict = {"videos": {}, "documents": {}}
         self._last_msg_in_group = False
         self._up_path = ""
@@ -64,7 +63,6 @@ class TelegramUploader:
         self._user_session = self._listener.user_transmission
         self._error = ""
         self._base_msg = None
-        self._files_links = False
 
     async def _upload_progress(self, current, _):
         if self._listener.is_cancelled:
@@ -86,11 +84,6 @@ class TelegramUploader:
             Config.LEECH_FILENAME_PREFIX
             if "LEECH_FILENAME_PREFIX" not in self._listener.user_dict
             else ""
-        )
-        self._files_links = self._listener.user_dict.get("FILES_LINKS", False) or (
-            Config.FILES_LINKS
-            if "FILES_LINKS" not in self._listener.user_dict
-            else False
         )
         if self._thumb != "none" and not await aiopath.exists(self._thumb):
             self._thumb = None
@@ -214,7 +207,7 @@ class TelegramUploader:
                 del self._msgs_dict[msg.link]
             await delete_message(msg)
         del self._media_dict[key][subkey]
-        if self._files_links and (
+        if self._listener.files_links and (
             self._listener.is_super_chat or self._listener.up_dest
         ):
             for m in msgs_list:
@@ -229,7 +222,8 @@ class TelegramUploader:
         res = await self._msg_to_reply()
         if not res:
             return
-        for dirpath, _, files in natsorted(await sync_to_async(walk, self._path)):
+        walk_result = await sync_to_async(lambda: list(walk(self._path)))
+        for dirpath, _, files in natsorted(walk_result):
             if dirpath.strip().endswith("/yt-dlp-thumb"):
                 continue
             if dirpath.strip().endswith("_mltbss"):
@@ -304,8 +298,7 @@ class TelegramUploader:
                     if self._listener.is_cancelled:
                         return
                     if (
-                        self._files_links
-                        and not self._is_corrupted
+                        self._listener.files_links
                         and (self._listener.is_super_chat or self._listener.up_dest)
                         and not self._is_private
                     ):
@@ -369,7 +362,6 @@ class TelegramUploader:
         ):
             self._thumb = None
         thumb = self._thumb
-        self._is_corrupted = False
         try:
             is_video, is_audio, is_image = await get_document_type(self._up_path)
 

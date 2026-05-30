@@ -42,7 +42,7 @@ leech_options = [
     "LEECH_DUMP_CHAT",
     "LEECH_FILENAME_PREFIX",
     "THUMBNAIL_LAYOUT",
-    "CLONE_DUMP_CHATS"
+    "CLONE_DUMP_CHATS",
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL"]
@@ -161,20 +161,6 @@ async def get_user_settings(from_user, stype="main"):
         else:
             hybrid_leech = "Disabled"
 
-        if (
-            user_dict.get("FILES_LINKS", False)
-            or "FILES_LINKS" not in user_dict
-            and Config.FILES_LINKS
-        ):
-            fl = "Enabled"
-            buttons.data_button(
-                "Disable FILES LINKS", f"userset {user_id} tog FILES_LINKS f"
-            )
-        else:
-            fl = "Disabled"
-            buttons.data_button(
-                "Enable FILES LINKS", f"userset {user_id} tog FILES_LINKS t"
-            )
         buttons.data_button(
             "Thumbnail Layout", f"userset {user_id} menu THUMBNAIL_LAYOUT"
         )
@@ -208,7 +194,6 @@ Clone Dump Chats is <code>{cdc}</code>
 Leech by <b>{leech_method}</b> session
 HYBRID Leech is <b>{hybrid_leech}</b>
 Thumbnail Layout is <b>{thumb_layout}</b>
-Files Links is <b>{fl}</b>
 """
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
@@ -299,6 +284,21 @@ Stop Duplicate is <b>{sd_msg}</b>"""
             f"userset {user_id} tog USER_TOKENS {'f' if user_tokens else 't'}",
         )
 
+        if (
+            user_dict.get("FILES_LINKS", False)
+            or "FILES_LINKS" not in user_dict
+            and Config.FILES_LINKS
+        ):
+            fl = "Enabled"
+            buttons.data_button(
+                "Disable FILES LINKS", f"userset {user_id} tog FILES_LINKS f"
+            )
+        else:
+            fl = "Disabled"
+            buttons.data_button(
+                "Enable FILES LINKS", f"userset {user_id} tog FILES_LINKS t"
+            )
+
         buttons.data_button(
             "Excluded Extensions", f"userset {user_id} menu EXCLUDED_EXTENSIONS"
         )
@@ -337,7 +337,9 @@ Stop Duplicate is <b>{sd_msg}</b>"""
         else:
             ytopt = "None"
 
-        buttons.data_button("Gallery-DL Options", f"userset {user_id} menu GALLERY_DL_OPTIONS")
+        buttons.data_button(
+            "Gallery-DL Options", f"userset {user_id} menu GALLERY_DL_OPTIONS"
+        )
         if user_dict.get("GALLERY_DL_OPTIONS", False):
             gdlopt = user_dict["GALLERY_DL_OPTIONS"]
         elif "GALLERY_DL_OPTIONS" not in user_dict and Config.GALLERY_DL_OPTIONS:
@@ -361,6 +363,7 @@ Stop Duplicate is <b>{sd_msg}</b>"""
         text = f"""<u>Settings for {name}</u>
 Default Package is <b>{du}</b>
 Use <b>{tr}</b> token/config
+Files Links is <b>{fl}</b>
 Upload Paths is <code>{upload_paths}</code>
 
 Name substitution is <code>{ns_msg}</code>
@@ -472,7 +475,12 @@ async def set_option(_, message, option):
             value.append(x.strip().lower())
     elif option == "INDEX_URL":
         value = value
-    elif option in ["UPLOAD_PATHS", "FFMPEG_CMDS", "YT_DLP_OPTIONS", "GALLERY_DL_OPTIONS"]:
+    elif option in [
+        "UPLOAD_PATHS",
+        "FFMPEG_CMDS",
+        "YT_DLP_OPTIONS",
+        "GALLERY_DL_OPTIONS",
+    ]:
         if value.startswith("{") and value.endswith("}"):
             try:
                 value = eval(value)

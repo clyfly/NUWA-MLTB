@@ -87,6 +87,7 @@ class TaskConfig:
         self.size = 0
         self.subsize = 0
         self.proceed_count = 0
+        self._alldebrid_magnet_id = 0
         self.is_leech = False
         self.is_qbit = False
         self.is_nzb = False
@@ -94,6 +95,9 @@ class TaskConfig:
         self.is_clone = False
         self.is_ytdlp = False
         self.is_gallerydl = False
+        self.is_alldebrid = False
+        self.is_buzzheavier = False
+        self.is_gofile = False
         self.equal_splits = False
         self.user_transmission = False
         self.hybrid_leech = False
@@ -120,6 +124,7 @@ class TaskConfig:
         self.is_file = False
         self.bot_trans = False
         self.user_trans = False
+        self.files_links = False
         self.is_rss = getattr(self.message, "_rss_trigger", False)
         self.progress = True
         self.ffmpeg_cmds = None
@@ -266,14 +271,23 @@ class TaskConfig:
                                 cmds.append(vl)
             self.ffmpeg_cmds = cmds
 
-        if not self.is_leech:
+        default_upload = (
+            self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
+        )
+        if default_upload == "bh" or self.up_dest == "bh":
+            self.is_buzzheavier = True
+        elif default_upload == "gf" or self.up_dest == "gf":
+            self.is_gofile = True
+
+        self.files_links = self.user_dict.get("FILES_LINKS", False) or (
+            Config.FILES_LINKS if "FILES_LINKS" not in self.user_dict else False
+        )
+
+        if not self.is_leech and not self.is_buzzheavier and not self.is_gofile:
             self.stop_duplicate = (
                 self.user_dict.get("STOP_DUPLICATE")
                 or "STOP_DUPLICATE" not in self.user_dict
                 and Config.STOP_DUPLICATE
-            )
-            default_upload = (
-                self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
             )
             if (not self.up_dest and default_upload == "rc") or self.up_dest == "rc":
                 self.up_dest = self.user_dict.get("RCLONE_PATH") or Config.RCLONE_PATH
@@ -334,7 +348,7 @@ class TaskConfig:
                     self.link
                 ) != self.get_config_path(self.up_dest):
                     raise ValueError("You must use the same config to clone!")
-        else:
+        elif not self.is_buzzheavier and not self.is_gofile:
             self.up_dest = (
                 self.up_dest
                 or self.user_dict.get("LEECH_DUMP_CHAT")
@@ -390,32 +404,31 @@ class TaskConfig:
                         )
                         self.user_transmission = False
                         self.hybrid_leech = False
-                    else:
-                        if chat.type.name not in [
-                            "SUPERGROUP",
-                            "CHANNEL",
-                            "GROUP",
-                            "FORUM",
-                        ]:
+                    elif chat.type.name not in [
+                        "SUPERGROUP",
+                        "CHANNEL",
+                        "GROUP",
+                        "FORUM",
+                    ]:
+                        self.user_transmission = False
+                        self.hybrid_leech = False
+                    elif chat.is_admin:
+                        member = await chat.get_member(TgClient.user.me.id)
+                        if (
+                            not member.privileges.can_manage_chat
+                            or not member.privileges.can_delete_messages
+                        ):
                             self.user_transmission = False
                             self.hybrid_leech = False
-                        elif chat.is_admin:
-                            member = await chat.get_member(TgClient.user.me.id)
-                            if (
-                                not member.privileges.can_manage_chat
-                                or not member.privileges.can_delete_messages
-                            ):
-                                self.user_transmission = False
-                                self.hybrid_leech = False
-                                LOGGER.warning(
-                                    "Enable manage chat and delete messages to account of the user session from administration settings!"
-                                )
-                        else:
                             LOGGER.warning(
-                                "Promote the account of the user session to admin in the chat to get the benefit of user transmission!"
+                                "Enable manage chat and delete messages to account of the user session from administration settings!"
                             )
-                            self.user_transmission = False
-                            self.hybrid_leech = False
+                    else:
+                        LOGGER.warning(
+                            "Promote the account of the user session to admin in the chat to get the benefit of user transmission!"
+                        )
+                        self.user_transmission = False
+                        self.hybrid_leech = False
 
                 if not self.user_transmission or self.hybrid_leech:
                     try:
@@ -661,7 +674,8 @@ class TaskConfig:
         if self.is_file and is_archive(dl_path):
             self.files_to_proceed.append(dl_path)
         else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     if (
                         is_first_archive_split(file_)
@@ -678,9 +692,10 @@ class TaskConfig:
         LOGGER.info(f"Extracting: {self.name}")
         async with task_dict_lock:
             task_dict[self.mid] = SevenZStatus(self, sevenz, gid, "Extract")
-        for dirpath, _, files in await sync_to_async(
-            walk, self.up_dir or self.dir, topdown=False
-        ):
+        walk_data = await sync_to_async(
+            lambda: list(walk(self.up_dir or self.dir, topdown=False))
+        )
+        for dirpath, _, files in walk_data:
             code = 0
             for file_ in files:
                 if self.is_cancelled:
@@ -822,9 +837,10 @@ class TaskConfig:
                         await move(file_path, dl_path)
                         await rmtree(new_folder)
                 else:
-                    for dirpath, _, files in natsorted(
-                        await sync_to_async(walk, dl_path, topdown=False)
-                    ):
+                    walk_data = await sync_to_async(
+                        lambda: list(walk(dl_path, topdown=False))
+                    )
+                    for dirpath, _, files in natsorted(walk_data):
                         f_path = []
                         for file_ in natsorted(files):
                             if (
@@ -950,7 +966,8 @@ class TaskConfig:
             await move(dl_path, new_path)
             return new_path
         else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
                     new_name = perform_substitution(file_, self.name_sub)
@@ -976,7 +993,8 @@ class TaskConfig:
                     return new_folder
         else:
             LOGGER.info(f"Creating Screenshot for: {dl_path}")
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
                     if (await get_document_type(f_path))[0]:
@@ -1025,7 +1043,8 @@ class TaskConfig:
         if self.is_file:
             all_files.append(dl_path)
         else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
                     all_files.append(f_path)
@@ -1106,7 +1125,8 @@ class TaskConfig:
             file_ = ospath.basename(dl_path)
             self.files_to_proceed[dl_path] = file_
         else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
                     if (await get_document_type(f_path))[0]:
@@ -1164,7 +1184,8 @@ class TaskConfig:
             if f_size > self.split_size:
                 self.files_to_proceed[dl_path] = [f_size, ospath.basename(dl_path)]
         else:
-            for dirpath, _, files in await sync_to_async(walk, dl_path, topdown=False):
+            walk_data = await sync_to_async(lambda: list(walk(dl_path, topdown=False)))
+            for dirpath, _, files in walk_data:
                 for file_ in files:
                     f_path = ospath.join(dirpath, file_)
                     f_size = await get_path_size(f_path)
