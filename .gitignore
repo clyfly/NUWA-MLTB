@@ -15,3 +15,4 @@ cookies.txt
 downloads/*
 *.session
 __pycache__/
+.pre-commit-config.yaml
