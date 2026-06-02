@@ -332,7 +332,7 @@ async def edit_variable(_, message, pre_message, key):
         await jdownloader.boot()
     elif key == "RSS_DELAY":
         add_job()
-    elif key == "USET_SERVERS":
+    elif key == "USENET_SERVERS":
         for s in value:
             await sabnzbd_client.set_special_config("servers", s)
 
