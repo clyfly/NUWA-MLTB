@@ -88,6 +88,8 @@ class TaskConfig:
         self.subsize = 0
         self.proceed_count = 0
         self._alldebrid_magnet_id = 0
+        self._torbox_torrent_id = 0
+        self._torbox_web_id = 0
         self.is_leech = False
         self.is_qbit = False
         self.is_nzb = False
@@ -96,6 +98,7 @@ class TaskConfig:
         self.is_ytdlp = False
         self.is_gallerydl = False
         self.is_alldebrid = False
+        self.is_torbox = False
         self.is_buzzheavier = False
         self.is_gofile = False
         self.equal_splits = False

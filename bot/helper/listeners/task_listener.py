@@ -455,6 +455,28 @@ class TaskListener(TaskConfig):
             except:
                 pass
             self._alldebrid_magnet_id = 0
+
+        torbox_torrent_id = getattr(self, "_torbox_torrent_id", 0) or 0
+        torbox_web_id = getattr(self, "_torbox_web_id", 0) or 0
+
+        if torbox_torrent_id or torbox_web_id:
+            try:
+                from ..mirror_leech_utils.download_utils.torbox_resolver import (
+                    delete_torrent,
+                    delete_web_download,
+                )
+
+                if torbox_torrent_id:
+                    await delete_torrent(torbox_torrent_id)
+
+                if torbox_web_id:
+                    await delete_web_download(torbox_web_id)
+
+            except:
+                pass
+
+        self._torbox_torrent_id = 0
+        self._torbox_web_id = 0
         msg = f"{self.tag} Download: {escape(str(error))}"
         await send_message(self.message, msg, button)
         if count == 0:

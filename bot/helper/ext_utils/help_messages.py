@@ -301,6 +301,17 @@ entirely so dead torrents finish faster on a debrid plan.
 
 Requires <code>ALLDEBRID_API_KEY</code> in the bot configuration."""
 
+torbox_arg = """<b>TorBox Unlock</b>: -tb
+
+/cmd link -tb
+Routes normal web/filehost links through TorBox WebDL.
+
+Magnet/torrent inputs are also routed through TorBox when <code>-tb</code>
+is set: the bot uploads the magnet or replied <code>.torrent</code>,
+waits for TorBox to finish/cache it, then downloads each file from TorBox CDN links.
+
+Requires <code>TORBOX_API_KEY</code> in bot configuration."""
+
 YT_HELP_DICT = {
     "main": yt,
     "New-Name": f"{new_name}\nNote: Don't add file extension",
@@ -377,6 +388,7 @@ MIRROR_HELP_DICT = {
     "Leech-Type": leech_as,
     "FFmpeg-Cmds": ffmpeg_cmds,
     "AllDebrid": alldebrid_arg,
+    "TorBox": torbox_arg,
 }
 
 CLONE_HELP_DICT = {
