@@ -683,7 +683,7 @@ async def edit_bot_settings(client, query):
         await database.update_aria2(data[2], "")
     elif data[1] == "emptyqbit":
         await query.answer()
-        await TorrentManager.qbittorrent.app.set_preferences({data[2]: value})
+        await TorrentManager.qbittorrent.app.set_preferences({data[2]: ""})
         qbit_options[data[2]] = ""
         await update_buttons(message, "qbit")
         await database.update_qbittorrent(data[2], "")
