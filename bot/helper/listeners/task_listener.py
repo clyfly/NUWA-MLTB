@@ -36,15 +36,15 @@ from ..ext_utils.status_utils import get_readable_file_size
 from ..ext_utils.task_manager import start_from_queued, check_running_tasks
 from ..mirror_leech_utils.gdrive_utils.upload import GoogleDriveUpload
 from ..mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelper
-from ..mirror_leech_utils.buzzheavier_uploader import BuzzHeavierUploader
-from ..mirror_leech_utils.gofile_uploader import GoFileUploader
+from ..mirror_leech_utils.upload_utils.buzzheavier_uploader import BuzzHeavierUploader
+from ..mirror_leech_utils.upload_utils.gofile_uploader import GoFileUploader
 from ..mirror_leech_utils.status_utils.gdrive_status import GoogleDriveStatus
 from ..mirror_leech_utils.status_utils.queue_status import QueueStatus
 from ..mirror_leech_utils.status_utils.rclone_status import RcloneStatus
 from ..mirror_leech_utils.status_utils.telegram_status import TelegramStatus
 from ..mirror_leech_utils.status_utils.buzzheavier_status import BuzzHeavierStatus
 from ..mirror_leech_utils.status_utils.gofile_status import GoFileStatus
-from ..mirror_leech_utils.telegram_uploader import TelegramUploader
+from ..mirror_leech_utils.upload_utils.telegram_uploader import TelegramUploader
 from ..telegram_helper.button_build import ButtonMaker
 from ..telegram_helper.message_utils import (
     send_message,
@@ -358,7 +358,7 @@ class TaskListener(TaskConfig):
             await database.rm_complete_task(self.message.link)
         msg = f"<b>Name: </b><code>{escape(self.name)}</code>\n\n<b>Size: </b>{get_readable_file_size(self.size)}"
         LOGGER.info(f"Task Done: {self.name}")
-        if self.is_leech or self.is_buzzheavier:
+        if self.is_leech:
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
@@ -380,7 +380,11 @@ class TaskListener(TaskConfig):
             if mime_type == "Folder":
                 msg += f"\n<b>SubFolders: </b>{folders}"
                 msg += f"\n<b>Files: </b>{files}"
-            if (
+            if self.is_buzzheavier:
+                buttons = ButtonMaker()
+                buttons.url_button("☁️ Cloud Link", link)
+                button = buttons.build_menu()
+            elif (
                 link
                 or rclone_path
                 and Config.RCLONE_SERVE_URL

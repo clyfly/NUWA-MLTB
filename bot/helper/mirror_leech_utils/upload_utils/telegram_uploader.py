@@ -25,13 +25,13 @@ from tenacity import (
     RetryError,
 )
 
-from ... import intervals
-from ...core.config_manager import Config
-from ...core.telegram_manager import TgClient
-from ..ext_utils.bot_utils import sync_to_async
-from ..ext_utils.files_utils import is_archive, get_base_name
-from ..telegram_helper.message_utils import delete_message
-from ..ext_utils.media_utils import (
+from .... import intervals
+from ....core.config_manager import Config
+from ....core.telegram_manager import TgClient
+from ...ext_utils.bot_utils import sync_to_async
+from ...ext_utils.files_utils import is_archive, get_base_name
+from ...telegram_helper.message_utils import delete_message
+from ...ext_utils.media_utils import (
     get_media_info,
     get_document_type,
     get_video_thumbnail,
@@ -63,6 +63,7 @@ class TelegramUploader:
         self._user_session = self._listener.user_transmission
         self._error = ""
         self._base_msg = None
+        self._files_links = False
 
     async def _upload_progress(self, current, _):
         if self._listener.is_cancelled:
@@ -87,6 +88,11 @@ class TelegramUploader:
         )
         if self._thumb != "none" and not await aiopath.exists(self._thumb):
             self._thumb = None
+        self._files_links = self._listener.user_dict.get("FILES_LINKS", False) or (
+            Config.FILES_LINKS
+            if "FILES_LINKS" not in self._listener.user_dict
+            else False
+        )
 
     async def _msg_to_reply(self):
         if self._listener.up_dest:
@@ -207,7 +213,7 @@ class TelegramUploader:
                 del self._msgs_dict[msg.link]
             await delete_message(msg)
         del self._media_dict[key][subkey]
-        if self._listener.files_links and (
+        if self._files_links and (
             self._listener.is_super_chat or self._listener.up_dest
         ):
             for m in msgs_list:
@@ -261,7 +267,7 @@ class TelegramUploader:
                                     if len(msgs) > 1:
                                         await self._send_media_group(subkey, key, msgs)
                     if self._listener.hybrid_leech and self._listener.user_transmission:
-                        self._user_session = f_size > 2097152000
+                        self._user_session = f_size > 2097152000 
                         if self._user_session:
                             self._sent_msg = await TgClient.user.get_messages(
                                 chat_id=self._sent_msg.chat.id,
@@ -298,7 +304,7 @@ class TelegramUploader:
                     if self._listener.is_cancelled:
                         return
                     if (
-                        self._listener.files_links
+                        self._files_links
                         and (self._listener.is_super_chat or self._listener.up_dest)
                         and not self._is_private
                     ):

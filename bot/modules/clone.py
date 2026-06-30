@@ -166,9 +166,9 @@ class Clone(TaskListener):
             )
             LOGGER.info(f"Cloning Done: {self.name}")
         elif is_rclone_path(self.link):
-            if self.link.startswith("mrcc:"):
-                self.link = self.link.replace("mrcc:", "", 1)
-                self.up_dest = self.up_dest.replace("mrcc:", "", 1)
+            if self.link.startswith("mt:"):
+                self.link = self.link.replace("mt:", "", 1)
+                self.up_dest = self.up_dest.replace("mt:", "", 1)
                 config_path = f"rclone/{self.user_id}.conf"
             else:
                 config_path = "rclone.conf"

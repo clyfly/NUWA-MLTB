@@ -127,7 +127,6 @@ class TaskConfig:
         self.is_file = False
         self.bot_trans = False
         self.user_trans = False
-        self.files_links = False
         self.is_rss = getattr(self.message, "_rss_trigger", False)
         self.progress = True
         self.ffmpeg_cmds = None
@@ -144,7 +143,7 @@ class TaskConfig:
         ]
 
     def get_token_path(self, dest):
-        if dest.startswith("mtp:"):
+        if dest.startswith("mt:"):
             return f"tokens/{self.user_id}.pickle"
         elif (
             dest.startswith("sa:")
@@ -157,7 +156,7 @@ class TaskConfig:
 
     def get_config_path(self, dest):
         return (
-            f"rclone/{self.user_id}.conf" if dest.startswith("mrcc:") else "rclone.conf"
+            f"rclone/{self.user_id}.conf" if dest.startswith("mt:") else "rclone.conf"
         )
 
     async def is_token_exists(self, path, status):
@@ -207,16 +206,16 @@ class TaskConfig:
         if self.link not in ["rcl", "gdl"]:
             if not self.is_jd:
                 if is_rclone_path(self.link):
-                    if not self.link.startswith("mrcc:") and self.user_dict.get(
+                    if not self.link.startswith("mt:") and self.user_dict.get(
                         "USER_TOKENS", False
                     ):
-                        self.link = f"mrcc:{self.link}"
+                        self.link = f"mt:{self.link}"
                     await self.is_token_exists(self.link, "dl")
                 elif is_gdrive_link(self.link):
                     if not self.link.startswith(
-                        ("mtp:", "tp:", "sa:")
+                        ("mt:", "tp:", "sa:")
                     ) and self.user_dict.get("USER_TOKENS", False):
-                        self.link = f"mtp:{self.link}"
+                        self.link = f"mt:{self.link}"
                     await self.is_token_exists(self.link, "dl")
         elif self.link == "rcl":
             if not self.is_ytdlp and not self.is_jd and not self.is_gallerydl:
@@ -229,7 +228,7 @@ class TaskConfig:
                 if not is_gdrive_id(self.link):
                     raise ValueError(self.link)
 
-        self.user_transmission = TgClient.IS_PREMIUM_USER and (
+        self.user_transmission = (
             self.user_dict.get("USER_TRANSMISSION")
             or Config.USER_TRANSMISSION
             and "USER_TRANSMISSION" not in self.user_dict
@@ -277,14 +276,33 @@ class TaskConfig:
         default_upload = (
             self.user_dict.get("DEFAULT_UPLOAD", "") or Config.DEFAULT_UPLOAD
         )
-        if default_upload == "bh" or self.up_dest == "bh":
+        if (
+            default_upload == "bh"
+            or self.up_dest == "bh"
+            or self.up_dest.startswith(("bh:", "mt:bh:"))
+        ):
+            if not self.up_dest and default_upload == "bh":
+                self.up_dest = (
+                    self.user_dict.get("BUZZHEAVIER_FOLDER_ID")
+                    or Config.BUZZHEAVIER_FOLDER_ID
+                )
+            if self.user_dict.get("USER_TOKENS", False) and (
+                self.up_dest and not self.up_dest.startswith("mt:")
+            ):
+                self.up_dest = f"mt:{self.up_dest}"
+            if self.up_dest.startswith("mt:") and not self.user_dict.get(
+                "BUZZHEAVIER_ACCOUNT_ID"
+            ):
+                raise ValueError(
+                    "BUZZHEAVIER_ACCOUNT_ID is required to be filled in user settings to upload to your own account!"
+                )
+            elif not Config.BUZZHEAVIER_ACCOUNT_ID:
+                raise ValueError(
+                    "BUZZHEAVIER_ACCOUNT_ID is required to be filled in config to upload to Buzzheavier!"
+                )
             self.is_buzzheavier = True
         elif default_upload == "gf" or self.up_dest == "gf":
             self.is_gofile = True
-
-        self.files_links = self.user_dict.get("FILES_LINKS", False) or (
-            Config.FILES_LINKS if "FILES_LINKS" not in self.user_dict else False
-        )
 
         if not self.is_leech and not self.is_buzzheavier and not self.is_gofile:
             self.stop_duplicate = (
@@ -301,14 +319,14 @@ class TaskConfig:
             if self.up_dest not in ["rcl", "gdl"]:
                 if is_gdrive_id(self.up_dest):
                     if not self.up_dest.startswith(
-                        ("mtp:", "tp:", "sa:")
+                        ("mt:", "tp:", "sa:")
                     ) and self.user_dict.get("USER_TOKENS", False):
-                        self.up_dest = f"mtp:{self.up_dest}"
+                        self.up_dest = f"mt:{self.up_dest}"
                 elif is_rclone_path(self.up_dest):
-                    if not self.up_dest.startswith("mrcc:") and self.user_dict.get(
+                    if not self.up_dest.startswith("mt:") and self.user_dict.get(
                         "USER_TOKENS", False
                     ):
-                        self.up_dest = f"mrcc:{self.up_dest}"
+                        self.up_dest = f"mt:{self.up_dest}"
                     self.up_dest = self.up_dest.strip("/")
                 else:
                     raise ValueError("Wrong Upload Destination!")
@@ -370,7 +388,7 @@ class TaskConfig:
                 self.user_transmission = False
                 self.hybrid_leech = False
             if self.user_trans:
-                self.user_transmission = TgClient.IS_PREMIUM_USER
+                self.user_transmission = True
             if self.up_dest:
                 if not isinstance(self.up_dest, int):
                     if self.up_dest.startswith("b:"):
@@ -379,11 +397,13 @@ class TaskConfig:
                         self.hybrid_leech = False
                     elif self.up_dest.startswith("u:"):
                         self.up_dest = self.up_dest.replace("u:", "", 1)
-                        self.user_transmission = TgClient.IS_PREMIUM_USER
+                        self.user_transmission = True
                     elif self.up_dest.startswith("h:"):
                         self.up_dest = self.up_dest.replace("h:", "", 1)
-                        self.user_transmission = TgClient.IS_PREMIUM_USER
-                        self.hybrid_leech = self.user_transmission
+                        self.user_transmission = True
+                        self.hybrid_leech = (
+                            self.user_transmission and TgClient.IS_PREMIUM_USER
+                        )
                     if "|" in self.up_dest:
                         self.up_dest, self.chat_thread_id = list(
                             map(
@@ -494,7 +514,9 @@ class TaskConfig:
                 and "EQUAL_SPLITS" not in self.user_dict
             )
             self.max_split_size = (
-                TgClient.MAX_SPLIT_SIZE if self.user_transmission else 2097152000
+                TgClient.MAX_SPLIT_SIZE
+                if self.user_transmission and TgClient.IS_PREMIUM_USER
+                else 2097152000
             )
             self.split_size = min(self.split_size, self.max_split_size)
 

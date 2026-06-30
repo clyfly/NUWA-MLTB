@@ -42,7 +42,7 @@ def is_share_link(url: str):
 def is_rclone_path(path: str):
     return bool(
         re_match(
-            r"^(mrcc:)?(?!(magnet:|mtp:|sa:|tp:))(?![- ])[a-zA-Z0-9_\. -]+(?<! ):(?!.*\/\/).*$|^rcl$",
+            r"^(mt:)?(?!(magnet:|sa:|tp:))(?![- ])[a-zA-Z0-9_\. -]+(?<! ):(?!.*\/\/).*$|^rcl$",
             path,
         )
     )
@@ -51,7 +51,7 @@ def is_rclone_path(path: str):
 def is_gdrive_id(id_: str):
     return bool(
         re_match(
-            r"^(tp:|sa:|mtp:)?(?:[a-zA-Z0-9-_]{33}|[a-zA-Z0-9_-]{19})$|^gdl$|^(tp:|mtp:)?root$",
+            r"^(tp:|sa:|mt:)?(?:[a-zA-Z0-9-_]{33}|[a-zA-Z0-9_-]{19})$|^gdl$|^(tp:|mt:)?root$",
             id_,
         )
     )

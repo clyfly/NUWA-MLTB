@@ -86,7 +86,7 @@ async def id_updates(_, query, obj):
         if obj.token_path != obj.user_token_path:
             id_ = f"sa:{obj.id}" if obj.use_sa else f"tp:{obj.id}"
         else:
-            id_ = f"mtp:{obj.id}"
+            id_ = f"mt:{obj.id}"
         if id_ != obj.listener.user_dict.get("GDRIVE_ID"):
             update_user_ldata(obj.listener.user_id, "GDRIVE_ID", id_)
             await obj.get_items_buttons()
@@ -369,7 +369,7 @@ class GoogleDriveList(GoogleDriveHelper):
             await delete_message(self._reply_to)
         if not self.listener.is_cancelled:
             if self.token_path == self.user_token_path:
-                return f"mtp:{self.id}"
+                return f"mt:{self.id}"
             else:
                 return f"sa:{self.id}" if self.use_sa else f"tp:{self.id}"
         return self.id

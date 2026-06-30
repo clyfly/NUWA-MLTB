@@ -265,8 +265,8 @@ class RcloneTransferHelper:
     async def upload(self, path):
         self._is_upload = True
         rc_path = self._listener.up_dest
-        if rc_path.startswith("mrcc:"):
-            rc_path = rc_path.split("mrcc:", 1)[1]
+        if rc_path.startswith("mt:"):
+            rc_path = rc_path.split("mt:", 1)[1]
             oconfig_path = f"rclone/{self._listener.user_id}.conf"
         else:
             oconfig_path = "rclone.conf"

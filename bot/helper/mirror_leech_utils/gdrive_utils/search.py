@@ -100,7 +100,7 @@ class GoogleDriveSearch(GoogleDriveHelper):
         telegraph_content = []
         Title = False
 
-        if target_id.startswith("mtp:"):
+        if target_id.startswith("mt:"):
             drives = self.get_user_drive(target_id, user_id)
         elif target_id:
             drives = [
@@ -113,8 +113,8 @@ class GoogleDriveSearch(GoogleDriveHelper):
         else:
             drives = zip(drives_names, drives_ids, index_urls)
         if (
-            target_id.startswith("mtp:")
-            or (not target_id.startswith("mtp:") and len(drives_ids) > 1)
+            target_id.startswith("mt:")
+            or (not target_id.startswith("mt:") and len(drives_ids) > 1)
             or target_id.startswith("tp:")
         ):
             self.use_sa = False
@@ -175,7 +175,7 @@ class GoogleDriveSearch(GoogleDriveHelper):
         return telegraph_content, contents_no
 
     def get_user_drive(self, target_id, user_id):
-        dest_id = target_id.replace("mtp:", "", 1)
+        dest_id = target_id.replace("mt:", "", 1)
         self.token_path = f"tokens/{user_id}.pickle"
         self.use_sa = False
         user_dict = user_data.get(user_id, {})

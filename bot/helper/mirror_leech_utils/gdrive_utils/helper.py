@@ -99,10 +99,10 @@ class GoogleDriveHelper:
         self.service = self.authorize()
 
     def get_id_from_url(self, link, user_id=""):
-        if user_id and link.startswith("mtp:"):
+        if user_id and link.startswith("mt:"):
             self.use_sa = False
             self.token_path = f"tokens/{user_id}.pickle"
-            link = link.replace("mtp:", "", 1)
+            link = link.replace("mt:", "", 1)
         elif link.startswith("sa:"):
             self.use_sa = True
             link = link.replace("sa:", "", 1)

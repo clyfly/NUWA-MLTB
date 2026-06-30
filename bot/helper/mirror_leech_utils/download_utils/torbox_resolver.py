@@ -1,9 +1,6 @@
-from __future__ import annotations
-
 import asyncio
 from os import path as ospath
 from typing import Any, Awaitable, Callable
-
 from httpx import AsyncClient, HTTPError
 
 from bot import LOGGER
@@ -30,10 +27,10 @@ _ERROR_STATES = {
 
 
 def _token() -> str:
-    token = (getattr(Config, "TORBOX_API_KEY", "") or "").strip()
-    if not token:
+    if token := (getattr(Config, "TORBOX_API_KEY", "") or "").strip():
+        return token
+    else:
         raise DirectDownloadLinkException("ERROR: TORBOX_API_KEY is not configured")
-    return token
 
 
 def _headers() -> dict[str, str]:
@@ -74,9 +71,13 @@ async def _api(
             res.raise_for_status()
             payload = res.json()
     except HTTPError as exc:
-        raise DirectDownloadLinkException(f"ERROR: TorBox network error: {exc}") from exc
+        raise DirectDownloadLinkException(
+            f"ERROR: TorBox network error: {exc}"
+        ) from exc
     except ValueError as exc:
-        raise DirectDownloadLinkException(f"ERROR: TorBox returned malformed JSON: {exc}") from exc
+        raise DirectDownloadLinkException(
+            f"ERROR: TorBox returned malformed JSON: {exc}"
+        ) from exc
 
     if not isinstance(payload, dict):
         raise DirectDownloadLinkException("ERROR: TorBox returned unexpected payload")
@@ -92,11 +93,14 @@ def _first_item(data: Any) -> dict[str, Any]:
         return data[0] if data else {}
 
     if isinstance(data, dict):
-        for key in ("torrent", "webdl", "download", "item"):
-            if isinstance(data.get(key), dict):
-                return data[key]
-        return data
-
+        return next(
+            (
+                data[key]
+                for key in ("torrent", "webdl", "download", "item")
+                if isinstance(data.get(key), dict)
+            ),
+            data,
+        )
     return {}
 
 
@@ -113,14 +117,11 @@ def _has_error(item: dict[str, Any]) -> str:
         return str(item["error"])
 
     state = str(item.get("download_state") or "").lower()
-    if state in _ERROR_STATES:
-        return state
-
-    return ""
+    return state if state in _ERROR_STATES else ""
 
 
 def _basename(name: str) -> str:
-    return ospath.basename(str(name).rstrip("/")) or "file"
+    return ospath.basename(name.rstrip("/")) or "file"
 
 
 async def _create_torrent_from_magnet(magnet: str) -> dict[str, Any]:
@@ -131,13 +132,15 @@ async def _create_torrent_from_magnet(magnet: str) -> dict[str, Any]:
         "allow_zip": (None, "true"),
     }
     data = await _api("POST", "/torrents/createtorrent", files=files)
-    item = _first_item(data)
-    if not item:
+    if item := _first_item(data):
+        return item
+    else:
         raise DirectDownloadLinkException("ERROR: TorBox returned no torrent data")
-    return item
 
 
-async def _create_torrent_from_file(torrent_bytes: bytes, filename: str) -> dict[str, Any]:
+async def _create_torrent_from_file(
+    torrent_bytes: bytes, filename: str
+) -> dict[str, Any]:
     LOGGER.info(f"TorBox: creating torrent from file: {filename}")
     files = {
         "file": (filename, torrent_bytes, "application/x-bittorrent"),
@@ -145,20 +148,20 @@ async def _create_torrent_from_file(torrent_bytes: bytes, filename: str) -> dict
         "allow_zip": (None, "true"),
     }
     data = await _api("POST", "/torrents/createtorrent", files=files)
-    item = _first_item(data)
-    if not item:
+    if item := _first_item(data):
+        return item
+    else:
         raise DirectDownloadLinkException("ERROR: TorBox returned no torrent data")
-    return item
 
 
 async def _create_webdl(link: str) -> dict[str, Any]:
     LOGGER.info("TorBox: creating web download")
     files = {"link": (None, link)}
     data = await _api("POST", "/webdl/createwebdownload", files=files)
-    item = _first_item(data)
-    if not item:
+    if item := _first_item(data):
+        return item
+    else:
         raise DirectDownloadLinkException("ERROR: TorBox returned no webdl data")
-    return item
 
 
 async def _get_torrent(torrent_id: int | str) -> dict[str, Any]:
@@ -167,10 +170,12 @@ async def _get_torrent(torrent_id: int | str) -> dict[str, Any]:
         "/torrents/mylist",
         params={"id": str(torrent_id), "bypass_cache": "true"},
     )
-    item = _first_item(data)
-    if not item:
-        raise DirectDownloadLinkException(f"ERROR: TorBox returned no torrent status for {torrent_id}")
-    return item
+    if item := _first_item(data):
+        return item
+    else:
+        raise DirectDownloadLinkException(
+            f"ERROR: TorBox returned no torrent status for {torrent_id}"
+        )
 
 
 async def _get_webdl(web_id: int | str) -> dict[str, Any]:
@@ -179,10 +184,12 @@ async def _get_webdl(web_id: int | str) -> dict[str, Any]:
         "/webdl/mylist",
         params={"id": str(web_id), "bypass_cache": "true"},
     )
-    item = _first_item(data)
-    if not item:
-        raise DirectDownloadLinkException(f"ERROR: TorBox returned no webdl status for {web_id}")
-    return item
+    if item := _first_item(data):
+        return item
+    else:
+        raise DirectDownloadLinkException(
+            f"ERROR: TorBox returned no webdl status for {web_id}"
+        )
 
 
 async def delete_torrent(torrent_id: int | str) -> bool:
@@ -246,8 +253,7 @@ async def _wait_ready(
         if _is_ready(item):
             return item
 
-        err = _has_error(item)
-        if err:
+        if err := _has_error(item):
             raise DirectDownloadLinkException(f"ERROR: TorBox {kind} failed: {err}")
 
         now = loop.time()
@@ -260,7 +266,9 @@ async def _wait_ready(
                 if no_seed_started == 0:
                     no_seed_started = now
                 elif now - no_seed_started >= _NO_SEED_WAIT:
-                    raise DirectDownloadLinkException("ERROR: TorBox no seed / no peer timeout")
+                    raise DirectDownloadLinkException(
+                        "ERROR: TorBox no seed / no peer timeout"
+                    )
             else:
                 no_seed_started = 0.0
 
@@ -298,7 +306,9 @@ async def _request_file_link(kind: str, item_id: int | str, file_id: int | str) 
     raise DirectDownloadLinkException(f"ERROR: TorBox requestdl failed: {last_exc}")
 
 
-async def _payload(item: dict[str, Any], kind: str, item_id: int | str) -> dict[str, Any]:
+async def _payload(
+    item: dict[str, Any], kind: str, item_id: int | str
+) -> dict[str, Any]:
     files = item.get("files") or []
 
     if not isinstance(files, list) or not files:

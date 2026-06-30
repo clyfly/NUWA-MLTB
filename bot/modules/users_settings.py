@@ -46,6 +46,7 @@ leech_options = [
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL"]
+uploaders_options = ["BUZZHEAVIER_ACCOUNT_ID", "BUZZHEAVIER_FOLDER_ID"]
 
 
 async def get_user_settings(from_user, stype="main"):
@@ -161,6 +162,21 @@ async def get_user_settings(from_user, stype="main"):
         else:
             hybrid_leech = "Disabled"
 
+        if (
+            user_dict.get("FILES_LINKS", False)
+            or "FILES_LINKS" not in user_dict
+            and Config.FILES_LINKS
+        ):
+            fl = "Enabled"
+            buttons.data_button(
+                "Disable FILES LINKS", f"userset {user_id} tog FILES_LINKS f"
+            )
+        else:
+            fl = "Disabled"
+            buttons.data_button(
+                "Enable FILES LINKS", f"userset {user_id} tog FILES_LINKS t"
+            )
+
         buttons.data_button(
             "Thumbnail Layout", f"userset {user_id} menu THUMBNAIL_LAYOUT"
         )
@@ -192,8 +208,9 @@ Leech Prefix is <code>{escape(lprefix)}</code>
 Leech Destination is <code>{leech_dest}</code>
 Clone Dump Chats is <code>{cdc}</code>
 Leech by <b>{leech_method}</b> session
-HYBRID Leech is <b>{hybrid_leech}</b>
+Hybrid Leech is <b>{hybrid_leech}</b>
 Thumbnail Layout is <b>{thumb_layout}</b>
+Files Links is <b>{fl}</b>
 """
     elif stype == "rclone":
         buttons.data_button("Rclone Config", f"userset {user_id} menu RCLONE_CONFIG")
@@ -253,10 +270,31 @@ Gdrive Token <b>{tokenmsg}</b>
 Gdrive ID is <code>{gdrive_id}</code>
 Index URL is <code>{index}</code>
 Stop Duplicate is <b>{sd_msg}</b>"""
+    elif stype == "uploaders":
+        buttons.data_button(
+            "Buzzheavier Account ID", f"userset {user_id} menu BUZZHEAVIER_ACCOUNT_ID"
+        )
+        buttons.data_button(
+            "Buzzheavier Folder ID", f"userset {user_id} menu BUZZHEAVIER_FOLDER_ID"
+        )
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+        if user_dict.get("BUZZHEAVIER_ACCOUNT_ID", False):
+            bh_acc = user_dict["BUZZHEAVIER_ACCOUNT_ID"]
+        else:
+            bh_acc = "None"
+        if user_dict.get("BUZZHEAVIER_FOLDER_ID", False):
+            bh_fol = user_dict["BUZZHEAVIER_FOLDER_ID"]
+        else:
+            bh_fol = "None"
+        text = f"""<u>Uploaders Settings for {name}</u>
+Buzzheavier Account ID: {bh_acc}
+Buzzheavier Folder ID: {bh_fol}"""
     else:
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
         buttons.data_button("Gdrive API", f"userset {user_id} gdrive")
+        buttons.data_button("Uploaders", f"userset {user_id} uploaders")
 
         upload_paths = user_dict.get("UPLOAD_PATHS", {})
         if not upload_paths and "UPLOAD_PATHS" not in user_dict and Config.UPLOAD_PATHS:
@@ -283,21 +321,6 @@ Stop Duplicate is <b>{sd_msg}</b>"""
             f"Use {trr} token/config",
             f"userset {user_id} tog USER_TOKENS {'f' if user_tokens else 't'}",
         )
-
-        if (
-            user_dict.get("FILES_LINKS", False)
-            or "FILES_LINKS" not in user_dict
-            and Config.FILES_LINKS
-        ):
-            fl = "Enabled"
-            buttons.data_button(
-                "Disable FILES LINKS", f"userset {user_id} tog FILES_LINKS f"
-            )
-        else:
-            fl = "Disabled"
-            buttons.data_button(
-                "Enable FILES LINKS", f"userset {user_id} tog FILES_LINKS t"
-            )
 
         buttons.data_button(
             "Excluded Extensions", f"userset {user_id} menu EXCLUDED_EXTENSIONS"
@@ -363,7 +386,6 @@ Stop Duplicate is <b>{sd_msg}</b>"""
         text = f"""<u>Settings for {name}</u>
 Default Package is <b>{du}</b>
 Use <b>{tr}</b> token/config
-Files Links is <b>{fl}</b>
 Upload Paths is <code>{upload_paths}</code>
 
 Name substitution is <code>{ns_msg}</code>
@@ -530,6 +552,8 @@ async def get_menu(option, message, user_id):
         back_to = "rclone"
     elif option in gdrive_options:
         back_to = "gdrive"
+    elif option in uploaders_options:
+        back_to = "uploaders"
     else:
         back_to = "back"
     buttons.data_button("Back", f"userset {user_id} {back_to}")
@@ -651,7 +675,7 @@ async def edit_user_settings(client, query):
         await query.answer("Not Yours!", show_alert=True)
     elif data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "uploaders"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":

@@ -13,8 +13,8 @@ from ...telegram_helper.message_utils import send_status_message
 
 
 async def add_rclone_download(listener, path):
-    if listener.link.startswith("mrcc:"):
-        listener.link = listener.link.split("mrcc:", 1)[1]
+    if listener.link.startswith("mt:"):
+        listener.link = listener.link.split("mt:", 1)[1]
         config_path = f"rclone/{listener.user_id}.conf"
     else:
         config_path = "rclone.conf"

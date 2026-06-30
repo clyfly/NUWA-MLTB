@@ -1,9 +1,7 @@
 from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
-from aiofiles import open as aiopen
 from os import path as ospath
 from base64 import b64encode
-from os.path import basename as ospath_basename
 from re import match as re_match
 
 from .. import LOGGER, bot_loop, task_dict_lock, DOWNLOAD_DIR
@@ -374,7 +372,7 @@ class Mirror(TaskListener):
                         torrent_bytes = await fh.read()
                     resolved = await alldebrid_resolve_torrent(
                         torrent_bytes,
-                        ospath_basename(self.link),
+                        ospath.basename(self.link),
                         is_cancelled=lambda: self.is_cancelled,
                     )
             except DirectDownloadLinkException as e:
@@ -396,7 +394,7 @@ class Mirror(TaskListener):
                 self.is_qbit = False
 
         if (
-            self.is_torbox
+            self.link
             and isinstance(self.link, str)
             and not self.is_jd
             and not self.is_nzb
@@ -408,38 +406,27 @@ class Mirror(TaskListener):
             and file_ is None
             and not is_gdrive_id(self.link)
         ):
-            try:
-                resolved = await torbox_resolve(
-                    self.link,
-                    is_cancelled=lambda: self.is_cancelled,
-                )
-                self._torbox_web_id = resolved.get("torbox_web_id", 0)
-                self.link = resolved
-            except DirectDownloadLinkException as e:
-                msg = str(e)
-                LOGGER.info(msg)
-                if msg.startswith("ERROR:"):
-                    await send_message(self.message, msg)
-                await self.remove_from_same_dir()
-                return
-            except Exception as e:
-                await send_message(self.message, e)
-                await self.remove_from_same_dir()
-                return
+            if self.is_torbox:
+                try:
+                    resolved = await torbox_resolve(
+                        self.link,
+                        is_cancelled=lambda: self.is_cancelled,
+                    )
+                    self._torbox_web_id = resolved.get("torbox_web_id", 0)
+                    self.link = resolved
+                except DirectDownloadLinkException as e:
+                    msg = str(e)
+                    LOGGER.info(msg)
+                    if msg.startswith("ERROR:"):
+                        await send_message(self.message, msg)
+                    await self.remove_from_same_dir()
+                    return
+                except Exception as e:
+                    await send_message(self.message, e)
+                    await self.remove_from_same_dir()
+                    return
 
-        if (
-            isinstance(self.link, str)
-            and not self.is_jd
-            and not self.is_nzb
-            and not self.is_qbit
-            and not is_magnet(self.link)
-            and not is_rclone_path(self.link)
-            and not is_gdrive_link(self.link)
-            and not self.link.endswith(".torrent")
-            and file_ is None
-            and not is_gdrive_id(self.link)
-        ):
-            if self.is_alldebrid and isinstance(self.link, str) and self.link:
+            if self.is_alldebrid:
                 try:
                     resolved = await alldebrid_resolve(self.link)
                     if isinstance(resolved, str):

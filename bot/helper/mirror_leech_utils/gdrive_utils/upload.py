@@ -30,9 +30,9 @@ class GoogleDriveUpload(GoogleDriveHelper):
         self.is_uploading = True
 
     def user_setting(self):
-        if self.listener.up_dest.startswith("mtp:"):
+        if self.listener.up_dest.startswith("mt:"):
             self.token_path = f"tokens/{self.listener.user_id}.pickle"
-            self.listener.up_dest = self.listener.up_dest.replace("mtp:", "", 1)
+            self.listener.up_dest = self.listener.up_dest.replace("mt:", "", 1)
             self.use_sa = False
         elif self.listener.up_dest.startswith("tp:"):
             self.listener.up_dest = self.listener.up_dest.replace("tp:", "", 1)

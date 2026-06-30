@@ -8,8 +8,8 @@ from aiofiles import open as aiopen
 from aiofiles.os import path as aiopath
 from httpx import AsyncByteStream, AsyncClient, HTTPError, Limits, Timeout
 
-from ...core.config_manager import Config
-from ..ext_utils.bot_utils import sync_to_async
+from ....core.config_manager import Config
+from ...ext_utils.bot_utils import sync_to_async
 
 LOGGER = getLogger(__name__)
 
@@ -25,17 +25,12 @@ class MultipartFileStream(AsyncByteStream):
         self._file_size = file_size
         self.boundary = f"----mltb-gofile-{uuid4().hex}"
         file_name = ospath.basename(file_path).replace('"', "")
-        token = token.strip()
-        token_part = ""
-        if token:
-            token_part = (
-                f"--{self.boundary}\r\n"
-                'Content-Disposition: form-data; name="token"\r\n\r\n'
-                f"{token}\r\n"
-            )
+        if token := token.strip():
+            token_part = f'--{self.boundary}\r\nContent-Disposition: form-data; name="token"\r\n\r\n{token}\r\n'
+        else:
+            token_part = ""
         self._prefix = (
-            token_part
-            + f"--{self.boundary}\r\n"
+            f"{token_part}--{self.boundary}\r\n"
             + f'Content-Disposition: form-data; name="file"; filename="{file_name}"\r\n'
             + "Content-Type: application/octet-stream\r\n\r\n"
         ).encode()
@@ -93,10 +88,10 @@ class GoFileUploader:
         servers = payload.get("data", {}).get("servers", [])
         if not servers:
             raise RuntimeError("GoFile server lookup returned no servers")
-        server = servers[0].get("name")
-        if not server:
+        if server := servers[0].get("name"):
+            return f"https://{server}.gofile.io/uploadFile"
+        else:
             raise RuntimeError("GoFile server response missing server name")
-        return f"https://{server}.gofile.io/uploadFile"
 
     async def _upload_one(self, client, upload_url, file_path):
         if self._listener.is_cancelled:
@@ -126,17 +121,15 @@ class GoFileUploader:
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, dict):
             raise RuntimeError("GoFile response missing 'data' object")
-        link = (data.get("downloadPage") or "").strip()
-        if not link:
+        if link := (data.get("downloadPage") or "").strip():
+            return link
+        else:
             raise RuntimeError("GoFile response missing downloadPage")
-        return link
 
     async def upload(self):
         files = []
         corrupted = 0
         error = ""
-        files_dict = {}
-        first_link = None
         if await aiopath.isfile(self._path):
             files.append(self._path)
         else:
@@ -173,8 +166,6 @@ class GoFileUploader:
                     if self._listener.is_cancelled:
                         return
                     first_link = first_link or link
-                    if self._listener.files_links:
-                        files_dict[link] = ospath.basename(file_path)
         except Exception as exc:
             LOGGER.error(f"GoFile session error: {exc}")
             await self._listener.on_upload_error(f"GoFile: {exc}")

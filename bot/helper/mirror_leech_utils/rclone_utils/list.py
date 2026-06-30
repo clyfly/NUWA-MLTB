@@ -111,7 +111,7 @@ async def path_updates(_, query, obj):
         path = (
             f"{obj.remote}{obj.path}"
             if obj.config_path == "rclone.conf"
-            else f"mrcc:{obj.remote}{obj.path}"
+            else f"mt:{obj.remote}{obj.path}"
         )
         if path != obj.listener.user_dict.get("RCLONE_PATH"):
             update_user_ldata(obj.listener.user_id, "RCLONE_PATH", path)
@@ -373,5 +373,5 @@ class RcloneList:
         await self._event_handler()
         await delete_message(self._reply_to)
         if self.config_path != "rclone.conf" and not self.listener.is_cancelled:
-            return f"mrcc:{self.remote}{self.path}"
+            return f"mt:{self.remote}{self.path}"
         return f"{self.remote}{self.path}"
