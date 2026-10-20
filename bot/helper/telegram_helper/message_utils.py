@@ -1,5 +1,5 @@
 from asyncio import sleep
-from pyrogram.errors import FloodWait, FloodPremiumWait
+from pyrogram.errors import FloodWait, FloodPremiumWait, MessageNotModified
 from re import match as re_match
 from time import time
 
@@ -12,6 +12,8 @@ from ..ext_utils.status_utils import get_readable_message
 
 
 async def send_message(message, text, buttons=None, block=True):
+    if not message or isinstance(message, str) or getattr(message, "empty", False) or not getattr(message, "chat", None):
+        return ""
     try:
         return await message.reply(
             text=text,
@@ -29,10 +31,13 @@ async def send_message(message, text, buttons=None, block=True):
         return str(e)
 
 
-async def edit_message(message, text, buttons=None, block=True):
+async def send_rich_message(message, rich_input, buttons=None, block=True):
+    if not message or isinstance(message, str) or getattr(message, "empty", False) or not getattr(message, "chat", None):
+        return ""
     try:
-        return await message.edit(
-            text=text,
+        return await message.reply_rich(
+            rich_message=rich_input,
+            disable_notification=True,
             reply_markup=buttons,
         )
     except FloodWait as f:
@@ -40,13 +45,37 @@ async def edit_message(message, text, buttons=None, block=True):
         if not block:
             return str(f)
         await sleep(f.value * 1.2)
-        return await edit_message(message, text, buttons, block)
+        return await send_rich_message(message, rich_input, buttons, block)
+    except Exception as e:
+        LOGGER.error(str(e))
+        return str(e)
+
+
+async def edit_message(message, text=None, buttons=None, block=True, rich_message=None):
+    if not message or isinstance(message, str) or getattr(message, "empty", False) or not getattr(message, "chat", None):
+        return ""
+    try:
+        return await message.edit(
+            text=text,
+            reply_markup=buttons,
+            rich_message=rich_message,
+        )
+    except FloodWait as f:
+        LOGGER.warning(str(f))
+        if not block:
+            return str(f)
+        await sleep(f.value * 1.2)
+        return await edit_message(message, text, buttons, block, rich_message)
+    except MessageNotModified:
+        return message
     except Exception as e:
         LOGGER.error(str(e))
         return str(e)
 
 
 async def send_file(message, file, caption=""):
+    if not message or isinstance(message, str) or getattr(message, "empty", False) or not getattr(message, "chat", None):
+        return ""
     try:
         return await message.reply_document(
             document=file, caption=caption, disable_notification=True
@@ -78,10 +107,19 @@ async def send_rss(text, chat_id, thread_id):
 
 
 async def delete_message(message):
+    if not message or isinstance(message, str) or getattr(message, "empty", False) or not getattr(message, "chat", None):
+        return
     try:
         await message.delete()
     except Exception as e:
         LOGGER.error(str(e))
+
+
+async def delete_links(message):
+    if Config.DELETE_LINKS and message:
+        await delete_message(message)
+        if getattr(message, "reply_to_message", None):
+            await delete_message(message.reply_to_message)
 
 
 async def auto_delete_message(cmd_message=None, bot_message=None):
@@ -206,7 +244,11 @@ async def update_status_message(sid, force=False):
             return
         if text != status_dict[sid]["message"].text:
             message = await edit_message(
-                status_dict[sid]["message"], text, buttons, block=False
+                status_dict[sid]["message"],
+                None,
+                buttons,
+                block=False,
+                rich_message=text,
             )
             if isinstance(message, str):
                 if message.startswith("Telegram says: [40"):
@@ -243,7 +285,7 @@ async def send_status_message(msg, user_id=0):
                     del intervals["status"][sid]
                 return
             old_message = status_dict[sid]["message"]
-            message = await send_message(msg, text, buttons, block=False)
+            message = await send_rich_message(msg, text, buttons, block=False)
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"
@@ -256,7 +298,7 @@ async def send_status_message(msg, user_id=0):
             text, buttons = await get_readable_message(sid, is_user)
             if text is None:
                 return
-            message = await send_message(msg, text, buttons, block=False)
+            message = await send_rich_message(msg, text, buttons, block=False)
             if isinstance(message, str):
                 LOGGER.error(
                     f"Status with id: {sid} haven't been sent. Error: {message}"

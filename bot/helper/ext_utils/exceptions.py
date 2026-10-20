@@ -5,7 +5,7 @@ class DirectDownloadLinkException(Exception):
 
 
 class NotSupportedExtractionArchive(Exception):
-    """The archive format use is trying to extract is not supported"""
+    """The archive format being used for extraction is not supported"""
 
     pass
 
@@ -18,5 +18,23 @@ class RssShutdownException(Exception):
 
 class TgLinkException(Exception):
     """No Access granted for this chat"""
+
+    pass
+
+
+class InvalidConfigError(Exception):
+    """Raised when a configuration value is invalid or missing."""
+
+    pass
+
+
+class UploadFailedException(Exception):
+    """Raised when an upload operation fails after retries."""
+
+    pass
+
+
+class RateLimitExceededException(Exception):
+    """Raised when a user exceeds the rate limit for bot commands."""
 
     pass

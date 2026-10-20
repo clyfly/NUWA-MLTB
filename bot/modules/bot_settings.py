@@ -261,6 +261,8 @@ async def edit_variable(_, message, pre_message, key):
         value = int(value)
     elif key == "LEECH_SPLIT_SIZE":
         value = min(int(value), TgClient.MAX_SPLIT_SIZE)
+    elif key == "MIN_LEECH_UPLOAD_SIZE":
+        value = max(int(value), 0)
     elif key == "BASE_URL_PORT":
         value = int(value)
         if Config.BASE_URL:

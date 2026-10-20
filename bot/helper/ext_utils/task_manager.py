@@ -6,6 +6,8 @@ from ... import (
     non_queued_up,
     non_queued_dl,
     queue_dict_lock,
+    task_dict,
+    task_dict_lock,
     LOGGER,
 )
 from ...core.config_manager import Config
@@ -152,3 +154,46 @@ async def start_from_queued():
             if queued_dl:
                 for mid in list(queued_dl.keys()):
                     await start_dl_from_queued(mid)
+
+
+async def check_bot_task_limit() -> tuple[bool, int]:
+    """Check if the bot-wide task limit has been reached.
+
+    Returns ``(is_over_limit, limit)``.
+    """
+    limit = Config.BOT_TASK_LIMIT
+    if limit <= 0:
+        return False, 0
+
+    async with task_dict_lock:
+        active = len(task_dict)
+
+    if active >= limit:
+        LOGGER.warning(
+            f"Bot task limit reached: {active}/{limit}"
+        )
+        return True, limit
+    return False, limit
+
+
+async def check_user_task_limit(user_id: int) -> tuple[bool, int]:
+    """Check if the per-user task limit has been reached.
+
+    Returns ``(is_over_limit, limit)``.
+    """
+    limit = Config.USER_TASK_LIMIT
+    if limit <= 0:
+        return False, 0
+
+    async with task_dict_lock:
+        user_tasks = sum(
+            1 for t in task_dict.values()
+            if getattr(getattr(t, "listener", None), "user_id", None) == user_id
+        )
+
+    if user_tasks >= limit:
+        LOGGER.warning(
+            f"User task limit reached for {user_id}: {user_tasks}/{limit}"
+        )
+        return True, limit
+    return False, limit

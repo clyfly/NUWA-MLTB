@@ -2,6 +2,7 @@ from asyncio import sleep
 
 from .. import task_dict, task_dict_lock, user_data, multi_tags
 from ..core.config_manager import Config
+from ..core.telegram_manager import TgClient
 from ..helper.ext_utils.bot_utils import new_task
 from ..helper.ext_utils.status_utils import (
     get_task_by_gid,
@@ -11,6 +12,7 @@ from ..helper.ext_utils.status_utils import (
 from ..helper.telegram_helper import button_build
 from ..helper.telegram_helper.bot_commands import BotCommands
 from ..helper.telegram_helper.filters import CustomFilters
+from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.telegram_helper.message_utils import (
     send_message,
     auto_delete_message,
@@ -21,13 +23,24 @@ from ..helper.telegram_helper.message_utils import (
 
 @new_task
 async def cancel(_, message):
-    user_id = message.from_user.id if message.from_user else message.sender_chat.id
+    user = message.from_user or message.sender_chat
+    user_id = user.id if user else 0
     msg = message.text.split()
+    gid = None
     if len(msg) > 1:
         gid = msg[1]
-        if len(gid) == 4:
-            multi_tags.discard(gid)
-            return
+    elif "_" in msg[0]:
+        gid = msg[0].split("_", 1)[1]
+        if "@" in gid:
+            gid = gid.split("@", 1)[0]
+
+    if gid:
+        if gid in multi_tags:
+            uid = multi_tags[gid]
+            if uid != user_id and not await CustomFilters.sudo("", message):
+                await send_message(message, "Not Yours!")
+                return
+            del multi_tags[gid]
         else:
             task = await get_task_by_gid(gid)
             if task is None:
@@ -39,7 +52,7 @@ async def cancel(_, message):
         if task is None:
             await send_message(message, "This is not an active task!")
             return
-    elif len(msg) == 1:
+    else:
         msg = (
             "Reply to an active Command message which was used to start the download"
             f" or send <code>/{BotCommands.CancelTaskCommand[0]} GID</code> to cancel it!"
@@ -58,20 +71,64 @@ async def cancel(_, message):
 
 
 @new_task
-async def cancel_multi(_, query):
-    data = query.data.split()
-    user_id = query.from_user.id
-    if user_id != int(data[1]) and not await CustomFilters.sudo("", query):
+async def cancel_updates(_, query):
+    data = (query.data or "").split()
+    user_id = query.from_user.id if query.from_user else 0
+
+    if len(data) < 2 or data[0] != "cancel":
+        await query.answer("Invalid or expired action!", show_alert=True)
+        return
+
+    action = data[1]
+    if action == "close":
+        await query.answer()
+        await delete_message(query.message)
+        return
+
+    if action not in {"canconf", "conf"} or len(data) < 3 or not data[2].strip():
+        await query.answer("Invalid or expired task action!", show_alert=True)
+        return
+
+    gid = data[2]
+    task = await get_task_by_gid(gid)
+    if task is None:
+        await query.answer("Task already cancelled or finished!", show_alert=True)
+        return
+
+    if user_id != task.listener.user_id and not await CustomFilters.sudo("", query):
         await query.answer("Not Yours!", show_alert=True)
         return
-    tag = int(data[2])
-    if tag in multi_tags:
-        multi_tags.discard(int(data[2]))
-        msg = "Stopped!"
-    else:
-        msg = "Already Stopped/Finished!"
-    await query.answer(msg, show_alert=True)
+
+    if action == "canconf":
+        await query.answer()
+        button = ButtonMaker()
+        button.data_button("Yes", f"cancel conf {gid}", style="green")
+        button.data_button("No", "cancel close", style="red")
+        cmd_msg = None
+        chat_id = getattr(getattr(query, "message", None), "chat", None)
+        chat_id = getattr(chat_id, "id", None)
+        if chat_id and getattr(task.listener, "mid", None):
+            try:
+                cmd_msg = await TgClient.bot.get_messages(
+                    chat_id, task.listener.mid
+                )
+            except Exception:
+                pass
+        if not cmd_msg or getattr(cmd_msg, "empty", False) or not getattr(cmd_msg, "chat", None):
+            cmd_msg = query.message
+        res = await send_message(
+            cmd_msg,
+            "Are you sure you want to cancel this task?",
+            buttons=button.build_menu(2),
+        )
+        if res and not isinstance(res, str):
+            await auto_delete_message(res)
+        return
+
     await delete_message(query.message)
+    await query.answer()
+    obj = task.task()
+    await obj.cancel_task()
 
 
 async def cancel_all(status, user_id):
@@ -115,6 +172,9 @@ def create_cancel_buttons(is_sudo, user_id=""):
         "ConvertMedia", f"canall ms {MirrorStatus.STATUS_CONVERT} {user_id}"
     )
     buttons.data_button("FFmpeg", f"canall ms {MirrorStatus.STATUS_FFMPEG} {user_id}")
+    buttons.data_button(
+        "Metadata", f"canall ms {MirrorStatus.STATUS_METADATA} {user_id}"
+    )
     buttons.data_button("Paused", f"canall ms {MirrorStatus.STATUS_PAUSED} {user_id}")
     buttons.data_button("All", f"canall ms All {user_id}")
     if is_sudo:
@@ -134,19 +194,23 @@ async def cancel_all_buttons(_, message):
         await send_message(message, "No active tasks!")
         return
     is_sudo = await CustomFilters.sudo("", message)
-    button = create_cancel_buttons(is_sudo, message.from_user.id)
+    user = message.from_user or message.sender_chat
+    user_id = user.id if user else ""
+    button = create_cancel_buttons(is_sudo, user_id)
     can_msg = await send_message(message, "Choose tasks to cancel!", button)
-    await auto_delete_message(message, can_msg)
+    if can_msg and not isinstance(can_msg, str):
+        await auto_delete_message(message, can_msg)
 
 
 @new_task
 async def cancel_all_update(_, query):
     data = query.data.split()
     message = query.message
-    reply_to = message.reply_to_message
-    user_id = int(data[3]) if len(data) > 3 else ""
+    reply_to = getattr(message, "reply_to_message", None)
+    user_id = int(data[3]) if len(data) > 3 and data[3].isdigit() else ""
     is_sudo = await CustomFilters.sudo("", query)
-    if not is_sudo and user_id and user_id != query.from_user.id:
+    from_user_id = query.from_user.id if getattr(query, "from_user", None) else 0
+    if not is_sudo and user_id and user_id != from_user_id:
         await query.answer("Not Yours!", show_alert=True)
     else:
         await query.answer()
@@ -160,7 +224,7 @@ async def cancel_all_update(_, query):
         button = create_cancel_buttons(is_sudo, "")
         await edit_message(message, "Choose tasks to cancel!", button)
     elif data[1] == "user":
-        button = create_cancel_buttons(is_sudo, query.from_user.id)
+        button = create_cancel_buttons(is_sudo, from_user_id)
         await edit_message(message, "Choose tasks to cancel!", button)
     elif data[1] == "ms":
         buttons = button_build.ButtonMaker()

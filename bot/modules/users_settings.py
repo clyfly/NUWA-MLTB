@@ -1,3 +1,4 @@
+from ast import literal_eval as _literal_eval
 from aiofiles.os import remove, path as aiopath, makedirs
 from asyncio import sleep
 from functools import partial
@@ -20,6 +21,7 @@ from ..core.config_manager import Config
 from ..core.telegram_manager import TgClient
 from ..helper.ext_utils.db_handler import database
 from ..helper.ext_utils.media_utils import create_thumb
+from ..helper.ext_utils.metadata_utils import MetadataProcessor
 from ..helper.telegram_helper.button_build import ButtonMaker
 from ..helper.ext_utils.help_messages import user_settings_text
 from ..helper.ext_utils.bot_utils import (
@@ -41,12 +43,19 @@ leech_options = [
     "LEECH_SPLIT_SIZE",
     "LEECH_DUMP_CHAT",
     "LEECH_FILENAME_PREFIX",
+    "LEECH_CAPTION",
     "THUMBNAIL_LAYOUT",
     "CLONE_DUMP_CHATS",
 ]
 rclone_options = ["RCLONE_CONFIG", "RCLONE_PATH", "RCLONE_FLAGS"]
 gdrive_options = ["TOKEN_PICKLE", "GDRIVE_ID", "INDEX_URL"]
 uploaders_options = ["BUZZHEAVIER_ACCOUNT_ID", "BUZZHEAVIER_FOLDER_ID"]
+metadata_options = {
+    "METADATA": "Global Metadata",
+    "AUDIO_METADATA": "Audio Metadata",
+    "VIDEO_METADATA": "Video Metadata",
+    "SUBTITLE_METADATA": "Subtitle Metadata",
+}
 
 
 async def get_user_settings(from_user, stype="main"):
@@ -86,6 +95,17 @@ async def get_user_settings(from_user, stype="main"):
             lprefix = Config.LEECH_FILENAME_PREFIX
         else:
             lprefix = "None"
+        buttons.data_button(
+            "Leech Captions", "userset {} menu LEECH_CAPTION".format(user_id)
+        )
+        leech_caption = (
+            user_dict.get("LEECH_CAPTION")
+            or user_dict.get("LEECH_CAPTIONS")
+            or Config.LEECH_CAPTION
+            or "None"
+        )
+        if len(leech_caption) > 200:
+            leech_caption = leech_caption[:197] + "..."
         if (
             user_dict.get("AS_DOCUMENT", False)
             or "AS_DOCUMENT" not in user_dict
@@ -205,6 +225,7 @@ Leech Split Size is <b>{split_size}</b>
 Equal Splits is <b>{equal_splits}</b>
 Media Group is <b>{media_group}</b>
 Leech Prefix is <code>{escape(lprefix)}</code>
+Leech Captions is <code>{escape(leech_caption)}</code>
 Leech Destination is <code>{leech_dest}</code>
 Clone Dump Chats is <code>{cdc}</code>
 Leech by <b>{leech_method}</b> session
@@ -290,6 +311,29 @@ Stop Duplicate is <b>{sd_msg}</b>"""
         text = f"""<u>Uploaders Settings for {name}</u>
 Buzzheavier Account ID: {bh_acc}
 Buzzheavier Folder ID: {bh_fol}"""
+    elif stype == "metadata":
+        metadata_lines = []
+        for setting, label in metadata_options.items():
+            value = user_dict.get(setting, getattr(Config, setting, {}))
+            source = "User setting" if setting in user_dict else "Bot default"
+            configured = bool(value)
+            buttons.data_button(
+                f"{label}: {'Set' if configured else 'None'}",
+                f"userset {user_id} menu {setting}",
+            )
+            value_text = str(value) if configured else "None"
+            if len(value_text) > 180:
+                value_text = value_text[:177] + "..."
+            metadata_lines.append(
+                f"{label} ({source}): <code>{escape(value_text)}</code>"
+            )
+        buttons.data_button("Back", f"userset {user_id} back")
+        buttons.data_button("Close", f"userset {user_id} close")
+        text = (
+            f"<u>Metadata Settings for {name}</u>\n"
+            "Metadata applies before upload to supported audio/video files.\n\n"
+            + "\n".join(metadata_lines)
+        )
     else:
         buttons.data_button("Leech", f"userset {user_id} leech")
         buttons.data_button("Rclone", f"userset {user_id} rclone")
@@ -378,6 +422,21 @@ Buzzheavier Folder ID: {bh_fol}"""
         else:
             ffc = "None"
 
+        metadata_status = (
+            "Exists"
+            if any(
+                user_dict.get(setting) or getattr(Config, setting, {})
+                for setting in metadata_options
+            )
+            else "None"
+        )
+        buttons.data_button("Metadata Settings", f"userset {user_id} metadata")
+
+        # Language setting
+        from ..helper.ext_utils.localization import SUPPORTED_LANGUAGES
+        user_lang = user_dict.get("USER_LANGUAGE", "") or Config.BOT_LANGUAGE
+        buttons.data_button("Language", f"userset {user_id} menu USER_LANGUAGE")
+
         if user_dict:
             buttons.data_button("Reset All", f"userset {user_id} reset all")
 
@@ -398,7 +457,11 @@ YT-DLP Options is <code>{ytopt}</code>
 
 Gallery-DL Options is <code>{gdlopt}</code>
 
-FFMPEG Commands is <b>{ffc}</b>"""
+FFMPEG Commands is <b>{ffc}</b>
+
+METADATA Settings is <b>{metadata_status}</b>
+
+Language is <b>{user_lang}</b>"""
 
     return text, buttons.build_menu(2)
 
@@ -446,7 +509,7 @@ async def add_one(_, message, option):
     value = message.text
     if value.startswith("{") and value.endswith("}"):
         try:
-            value = eval(value)
+            value = _literal_eval(value)
             if user_dict[option]:
                 user_dict[option].update(value)
             else:
@@ -483,6 +546,16 @@ async def set_option(_, message, option):
         if not value.isdigit():
             value = get_size_bytes(value)
         value = min(int(value), TgClient.MAX_SPLIT_SIZE)
+    elif option == "USER_LANGUAGE":
+        from ..helper.ext_utils.localization import SUPPORTED_LANGUAGES
+        value = value.strip().lower()
+        if value not in SUPPORTED_LANGUAGES:
+            await send_message(
+                message,
+                f"❌ Unsupported language: <code>{value}</code>\n"
+                f"Available: {', '.join(SUPPORTED_LANGUAGES)}",
+            )
+            return
     elif option == "EXCLUDED_EXTENSIONS":
         fx = value.split()
         value = ["aria2", "!qB"]
@@ -495,6 +568,12 @@ async def set_option(_, message, option):
         for x in fx:
             x = x.lstrip(".")
             value.append(x.strip().lower())
+    elif option in metadata_options:
+        try:
+            value = MetadataProcessor.parse_string(value)
+        except ValueError as error:
+            await send_message(message, str(error))
+            return
     elif option == "INDEX_URL":
         value = value
     elif option in [
@@ -505,7 +584,7 @@ async def set_option(_, message, option):
     ]:
         if value.startswith("{") and value.endswith("}"):
             try:
-                value = eval(value)
+                value = _literal_eval(value)
             except Exception as e:
                 await send_message(message, str(e))
                 return
@@ -675,7 +754,7 @@ async def edit_user_settings(client, query):
         await query.answer("Not Yours!", show_alert=True)
     elif data[2] == "setevent":
         await query.answer()
-    elif data[2] in ["leech", "gdrive", "rclone", "uploaders"]:
+    elif data[2] in ["leech", "gdrive", "rclone", "uploaders", "metadata"]:
         await query.answer()
         await update_user_settings(query, data[2])
     elif data[2] == "menu":
@@ -755,13 +834,20 @@ async def edit_user_settings(client, query):
                 fpath = token_pickle
             if await aiopath.exists(fpath):
                 await remove(fpath)
-            del user_dict[data[3]]
+            user_dict.pop(data[3], None)
             await database.update_user_doc(user_id, data[3])
         else:
-            update_user_ldata(user_id, data[3], "")
+            if data[3] in metadata_options:
+                user_dict.pop(data[3], None)
+            else:
+                update_user_ldata(user_id, data[3], "")
+            if data[3] == "LEECH_CAPTION":
+                user_dict.pop("LEECH_CAPTIONS", None)
             await database.update_user_data(user_id)
     elif data[2] == "reset":
         await query.answer("Reseted!", show_alert=True)
+        if data[3] == "LEECH_CAPTION":
+            user_dict.pop("LEECH_CAPTIONS", None)
         if data[3] in user_dict:
             del user_dict[data[3]]
         else:

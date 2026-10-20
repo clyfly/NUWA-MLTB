@@ -1,4 +1,4 @@
-"""Tests for the new ``-ad`` and ``-bh`` CLI flags."""
+"""Tests for the ``-ad`` CLI flag."""
 
 from __future__ import annotations
 
@@ -54,26 +54,24 @@ def arg_parser(monkeypatch):
 
 
 def test_ad_bool_flag_set(arg_parser):
-    args = {"-ad": False, "-bh": False, "-z": False, "link": ""}
+    args = {"-ad": False, "-z": False, "link": ""}
     arg_parser(["http://x", "-ad"], args)
     assert args["-ad"] is True
     assert args["link"] == "http://x"
 
-
-def test_bh_bool_flag_set(arg_parser):
-    args = {"-ad": False, "-bh": False, "link": ""}
-    arg_parser(["http://x", "-bh"], args)
-    assert args["-bh"] is True
-
-
-def test_ad_and_bh_combined(arg_parser):
-    args = {"-ad": False, "-bh": False, "link": ""}
-    arg_parser(["http://x", "-ad", "-bh"], args)
-    assert args["-ad"] is True
-    assert args["-bh"] is True
 
 
 def test_unknown_flag_left_alone(arg_parser):
     args = {"-ad": False, "link": ""}
     arg_parser(["http://x", "-unknown"], args)
     assert args["-ad"] is False
+
+
+def test_meta_flag_preserves_link_and_pipe_delimited_value(arg_parser):
+    args = {"-meta": "", "link": ""}
+    arg_parser(
+        ["https://example.com/movie", "-meta", "title={basename}|date={year}"],
+        args,
+    )
+    assert args["link"] == "https://example.com/movie"
+    assert args["-meta"] == "title={basename}|date={year}"

@@ -3,8 +3,10 @@ from aiofiles.os import path as aiopath
 from os import path as ospath
 from base64 import b64encode
 from re import match as re_match
+from time import time
 
 from .. import LOGGER, bot_loop, task_dict_lock, DOWNLOAD_DIR
+from ..core.config_manager import Config
 from ..helper.ext_utils.bot_utils import (
     get_content_type,
     sync_to_async,
@@ -19,6 +21,7 @@ from ..helper.ext_utils.links_utils import (
     is_rclone_path,
     is_telegram_link,
     is_gdrive_id,
+    is_tldv_link,
 )
 from ..helper.listeners.task_listener import TaskListener
 from ..helper.mirror_leech_utils.download_utils.aria2_download import (
@@ -37,6 +40,9 @@ from ..helper.mirror_leech_utils.download_utils.torbox_resolver import (
 from ..helper.mirror_leech_utils.download_utils.direct_downloader import (
     add_direct_download,
 )
+from ..helper.mirror_leech_utils.download_utils.tldv_downloader import (
+    add_tldv_download,
+)
 from ..helper.mirror_leech_utils.download_utils.direct_link_generator import (
     direct_link_generator,
 )
@@ -50,7 +56,13 @@ from ..helper.mirror_leech_utils.download_utils.rclone_download import (
 from ..helper.mirror_leech_utils.download_utils.telegram_download import (
     TelegramDownloadHelper,
 )
-from ..helper.telegram_helper.message_utils import send_message, get_tg_link_message
+from ..helper.telegram_helper.message_utils import (
+    delete_links,
+    send_message,
+    get_tg_link_message,
+)
+from ..helper.ext_utils.dedup import check_duplicate
+from ..helper.ext_utils.task_manager import check_bot_task_limit, check_user_task_limit
 
 
 class Mirror(TaskListener):
@@ -122,9 +134,26 @@ class Mirror(TaskListener):
             "-ns": "",
             "-tl": "",
             "-ff": set(),
+            "-meta": "",
         }
 
         arg_parser(input_list[1:], args)
+        try:
+            self.set_metadata(args["-meta"])
+        except ValueError as error:
+            await send_message(self.message, f"Invalid metadata format: {error}")
+            await self.remove_from_same_dir()
+            await delete_links(self.message)
+            return
+
+        if Config.DISABLE_SEED and args.get("-d", False):
+            await send_message(
+                self.message,
+                "Seeding is currently disabled. Please try without the -d flag.",
+            )
+            await self.remove_from_same_dir()
+            await delete_links(self.message)
+            return
 
         self.select = args["-s"]
         self.seed = args["-d"]
@@ -238,6 +267,7 @@ class Mirror(TaskListener):
             except Exception as e:
                 await send_message(self.message, f"ERROR: {e}")
                 await self.remove_from_same_dir()
+                await delete_links(self.message)
                 return
 
         if isinstance(reply_to, list):
@@ -265,6 +295,7 @@ class Mirror(TaskListener):
             return
 
         if reply_to:
+            self.file_details = {"caption": reply_to.caption}
             file_ = (
                 reply_to.document
                 or reply_to.photo
@@ -306,6 +337,7 @@ class Mirror(TaskListener):
                 self.message, COMMAND_USAGE["mirror"][0], COMMAND_USAGE["mirror"][1]
             )
             await self.remove_from_same_dir()
+            await delete_links(self.message)
             return
 
         if len(self.link) > 0:
@@ -316,6 +348,7 @@ class Mirror(TaskListener):
         except Exception as e:
             await send_message(self.message, e)
             await self.remove_from_same_dir()
+            await delete_links(self.message)
             return
 
         if self.is_torbox:
@@ -350,10 +383,12 @@ class Mirror(TaskListener):
                 if msg.startswith("ERROR:"):
                     await send_message(self.message, msg)
                 await self.remove_from_same_dir()
+                await delete_links(self.message)
                 return
             except Exception as e:
                 await send_message(self.message, e)
                 await self.remove_from_same_dir()
+                await delete_links(self.message)
                 return
 
         if self.is_alldebrid and (
@@ -381,11 +416,13 @@ class Mirror(TaskListener):
                 if msg.startswith("ERROR:"):
                     await send_message(self.message, msg)
                     await self.remove_from_same_dir()
+                    await delete_links(self.message)
                     return
                 resolved = None
             except Exception as e:
                 await send_message(self.message, e)
                 await self.remove_from_same_dir()
+                await delete_links(self.message)
                 return
             if isinstance(resolved, dict):
                 self._alldebrid_magnet_id = resolved.get("magnet_id", 0)
@@ -420,10 +457,12 @@ class Mirror(TaskListener):
                     if msg.startswith("ERROR:"):
                         await send_message(self.message, msg)
                     await self.remove_from_same_dir()
+                    await delete_links(self.message)
                     return
                 except Exception as e:
                     await send_message(self.message, e)
                     await self.remove_from_same_dir()
+                    await delete_links(self.message)
                     return
 
             if self.is_alldebrid:
@@ -440,10 +479,12 @@ class Mirror(TaskListener):
                     if msg.startswith("ERROR:"):
                         await send_message(self.message, msg)
                         await self.remove_from_same_dir()
+                        await delete_links(self.message)
                         return
                 except Exception as e:
                     await send_message(self.message, e)
                     await self.remove_from_same_dir()
+                    await delete_links(self.message)
                     return
 
             if isinstance(self.link, str):
@@ -466,11 +507,64 @@ class Mirror(TaskListener):
                         if e.startswith("ERROR:"):
                             await send_message(self.message, e)
                             await self.remove_from_same_dir()
+                            await delete_links(self.message)
                             return
                     except Exception as e:
                         await send_message(self.message, e)
                         await self.remove_from_same_dir()
+                        await delete_links(self.message)
                         return
+
+        # --- Task Limit Checks ---
+        if not self.force_run and not self.force_download:
+            bot_over, bot_limit = await check_bot_task_limit()
+            if bot_over:
+                await send_message(
+                    self.message,
+                    f"⚠️ Bot task limit reached (<b>{bot_limit}</b>). "
+                    f"Please wait for a task to finish.",
+                )
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return
+
+            user_over, user_limit = await check_user_task_limit(self.user_id)
+            if user_over:
+                await send_message(
+                    self.message,
+                    f"⚠️ Your task limit reached (<b>{user_limit}</b>). "
+                    f"Please wait for your current tasks to finish.",
+                )
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return
+
+        # --- File Deduplication Check ---
+        if (
+            isinstance(self.link, str)
+            and self.link
+            and not file_
+            and not self.is_clone
+        ):
+            dup = await check_duplicate(
+                name=ospath.basename(self.link) if ospath.exists(str(self.link)) else "",
+                size=0,
+                url=self.link,
+                user_id=self.user_id,
+            )
+            if dup:
+                dup_time = int(time() - dup["timestamp"])
+                dup_age = f"{dup_time // 3600}h {(dup_time % 3600) // 60}m"
+                await send_message(
+                    self.message,
+                    f"⚠️ <b>Duplicate detected!</b>\n\n"
+                    f"This link was already downloaded {dup_age} ago.\n"
+                    f"Path: <code>{dup['path']}</code>\n\n"
+                    f"Use <code>-nd</code> flag to force download anyway.",
+                )
+                await self.remove_from_same_dir()
+                await delete_links(self.message)
+                return
 
         if file_ is not None:
             await TelegramDownloadHelper(self).add_download(
@@ -488,6 +582,8 @@ class Mirror(TaskListener):
             await add_rclone_download(self, f"{path}/")
         elif is_gdrive_link(self.link) or is_gdrive_id(self.link):
             await add_gd_download(self, path)
+        elif is_tldv_link(self.link):
+            await add_tldv_download(self, path, headers)
         else:
             ussr = args["-au"]
             pssw = args["-ap"]

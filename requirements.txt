@@ -18,9 +18,12 @@ gunicorn
 httpx
 jinja2
 lxml
+langcodes
+language-data
 natsort
 par2cmdline-turbo
 pillow
+pycountry
 psutil
 pymongo
 kurigram

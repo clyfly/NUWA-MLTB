@@ -1,12 +1,14 @@
 from html import escape
 from psutil import virtual_memory, cpu_percent, disk_usage
 from time import time
-from asyncio import iscoroutinefunction, gather
-from pyrogram.types import InlineKeyboardButton
+from asyncio import gather
+from inspect import iscoroutinefunction
+from pyrogram.types import InputRichMessage
 
 from ... import task_dict, task_dict_lock, bot_start_time, status_dict, DOWNLOAD_DIR
 from ...core.config_manager import Config
 from ..telegram_helper.button_build import ButtonMaker
+from .links_utils import is_gdrive_id, is_rclone_path
 
 SIZE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"]
 
@@ -26,6 +28,7 @@ class MirrorStatus:
     STATUS_SAMVID = "SamVid"
     STATUS_CONVERT = "Convert"
     STATUS_FFMPEG = "FFmpeg"
+    STATUS_METADATA = "Metadata"
 
 
 STATUSES = {
@@ -42,6 +45,7 @@ STATUSES = {
     "SP": MirrorStatus.STATUS_SPLIT,
     "SV": MirrorStatus.STATUS_SAMVID,
     "FF": MirrorStatus.STATUS_FFMPEG,
+    "MD": MirrorStatus.STATUS_METADATA,
     "PA": MirrorStatus.STATUS_PAUSED,
     "CK": MirrorStatus.STATUS_CHECK,
 }
@@ -110,7 +114,7 @@ def get_readable_time(seconds: int):
         if seconds >= period_seconds:
             period_value, seconds = divmod(seconds, period_seconds)
             result += f"{int(period_value)}{period_name}"
-    return result
+    return result or "0s"
 
 
 def time_to_seconds(time_duration):
@@ -128,7 +132,7 @@ def time_to_seconds(time_duration):
         else:
             return 0
         return hours * 3600 + minutes * 60 + seconds
-    except:
+    except (ValueError, AttributeError, IndexError):
         return 0
 
 
@@ -149,22 +153,147 @@ def speed_string_to_bytes(size_text: str):
 
 
 def get_progress_bar_string(pct):
-    pct = float(pct.strip("%"))
+    try:
+        pct = float(pct.strip("%"))
+    except:
+        pct = 0
     p = min(max(pct, 0), 100)
-    cFull = int(p // 8)
-    p_str = "■" * cFull
-    p_str += "□" * (12 - cFull)
+    cFull = min(12, max(0, int(p / 8.333333333333334)))
+    p_str = "■" * cFull + "□" * (12 - cFull)
     return f"[{p_str}]"
 
 
-async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
-    msg = ""
-    button = None
+def _get_elapsed_time(task):
+    try:
+        listener = getattr(task, "listener", None)
+        if hasattr(task, "start_time") and task.start_time > 0:
+            elapsed = time() - task.start_time
+        elif listener and hasattr(listener, "message") and getattr(listener.message, "date", None):
+            elapsed = time() - listener.message.date.timestamp()
+        else:
+            elapsed = 0
+        res = get_readable_time(int(max(0, elapsed)))
+        return res or "0s"
+    except:
+        return "0s"
 
+
+def _get_upload_dest(task):
+    try:
+        listener = getattr(task, "listener", None)
+        if not listener:
+            return "Telegram"
+        if getattr(listener, "is_leech", False):
+            return "Telegram"
+        if getattr(listener, "is_gofile", False):
+            return "GoFile"
+        if getattr(listener, "is_buzzheavier", False):
+            return "BuzzHeavier"
+        if getattr(listener, "is_clone", False):
+            return "GDrive Clone"
+        up_dest = getattr(listener, "up_dest", "")
+        if up_dest:
+            if is_gdrive_id(up_dest):
+                return "Google Drive"
+            elif is_rclone_path(up_dest):
+                return "Rclone"
+            return str(up_dest)
+        return "Telegram"
+    except:
+        return "Telegram"
+
+
+def _get_engine_name(task):
+    try:
+        tool = getattr(task, "tool", "")
+        try:
+            from ...modules.stats import commands
+        except:
+            commands = {}
+
+        if tool == "qbittorrent":
+            ver = commands.get("qBittorrent")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"qBit v{ver}"
+            return "qBit"
+        elif tool == "aria2":
+            ver = commands.get("aria2")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"Aria2 v{ver}"
+            return "Aria2"
+        elif tool == "yt-dlp":
+            ver = commands.get("yt-dlp")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"yt-dlp v{ver}"
+            return "yt-dlp"
+        elif tool == "sabnzbd":
+            ver = commands.get("SABnzbd+")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"Sabnzbd v{ver}"
+            return "Sabnzbd"
+        elif tool == "rclone":
+            ver = commands.get("rclone")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"Rclone v{ver}"
+            return "Rclone"
+        elif tool == "ffmpeg":
+            ver = commands.get("ffmpeg")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"FFmpeg v{ver}"
+            return "FFmpeg"
+        elif tool == "7z":
+            ver = commands.get("7z")
+            if isinstance(ver, str) and ver and not ver.startswith(("Error", "Exception", "Version")):
+                return f"7z v{ver}"
+            return "7z"
+        elif tool == "telegram":
+            return "Telegram"
+        elif tool == "jdownloader":
+            return "JDownloader"
+        elif tool == "gofile":
+            return "GoFile"
+        elif tool == "buzzheavier":
+            return "BuzzHeavier"
+        elif tool == "gDriveApi":
+            return "Google Drive"
+        elif tool:
+            return tool.capitalize()
+        return "Unknown"
+    except:
+        return "Unknown"
+
+
+def _get_user_display(task):
+    try:
+        listener = getattr(task, "listener", None)
+        if not listener:
+            return "User"
+        user = getattr(listener, "user", None)
+        user_id = getattr(listener, "user_id", 0)
+        name = ""
+        if user:
+            name = getattr(user, "first_name", None) or getattr(user, "title", None) or ""
+        if not name:
+            name = str(user_id) if user_id else "User"
+        escaped_name = escape(str(name))
+        if user_id:
+            return f"<a href='tg://user?id={user_id}'>{escaped_name}</a> ({user_id})"
+        return escaped_name
+    except:
+        return "User"
+
+
+async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=1):
     tasks = await get_specific_tasks(status, sid if is_user else None)
 
-    STATUS_LIMIT = Config.STATUS_LIMIT
     tasks_no = len(tasks)
+    if tasks_no == 0:
+        if status == "All":
+            return None, None
+        else:
+            return InputRichMessage(html=f"No Active {status} Tasks!<br><br>"), None
+
+    STATUS_LIMIT = Config.STATUS_LIMIT or 10
     pages = (max(tasks_no, 1) + STATUS_LIMIT - 1) // STATUS_LIMIT
     if page_no > pages:
         page_no = (page_no - 1) % pages + 1
@@ -174,7 +303,11 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         status_dict[sid]["page_no"] = page_no
     start_position = (page_no - 1) * STATUS_LIMIT
 
-    task_gids = []
+    if pages > 1:
+        msg = f"<h3>Tasks: {tasks_no} | Page: {page_no}/{pages}</h3>"
+    else:
+        msg = f"<h3>Tasks: {tasks_no}</h3>"
+
     for index, task in enumerate(
         tasks[start_position : STATUS_LIMIT + start_position], start=1
     ):
@@ -184,19 +317,28 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             tstatus = await task.status()
         else:
             tstatus = task.status()
-        if task.listener.is_super_chat:
-            msg += f"<b>{index + start_position}.<a href='{task.listener.message.link}'>{tstatus}</a>: </b>"
+        
+        link = (
+            task.listener.message.link
+            if getattr(task.listener, "is_super_chat", False)
+            and getattr(task.listener.message, "link", None)
+            else ""
+        )
+        msg += "<hr>"
+        if link:
+            msg += f"<b>{index + start_position}. <a href='{link}'>{tstatus}</a></b>"
         else:
-            msg += f"<b>{index + start_position}.{tstatus}: </b>"
-        msg += f"<code>{escape(f'{task.name()}')}</code>"
+            msg += f"<b>{index + start_position}. {tstatus}</b>"
+
         if task.listener.subname:
-            msg += f"\n<i>{task.listener.subname}</i>"
+            msg += f"<br><i>{escape(task.listener.subname)}</i>"
+
         if (
             tstatus not in [MirrorStatus.STATUS_SEED, MirrorStatus.STATUS_QUEUEUP]
             and task.listener.progress
         ):
             progress = task.progress()
-            msg += f"\n{get_progress_bar_string(progress)} {progress}"
+            msg += f"<br>{get_progress_bar_string(progress)} » {progress}"
             if task.listener.subname:
                 subsize = f"/{get_readable_file_size(task.listener.subsize)}"
                 ac = len(task.listener.files_to_proceed)
@@ -204,42 +346,71 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
             else:
                 subsize = ""
                 count = ""
-            msg += f"\n<b>Processed:</b> {task.processed_bytes()}{subsize}"
+            msg += f"<br><b>Processed:</b> {task.processed_bytes()}{subsize}"
             if count:
-                msg += f"\n<b>Count:</b> {count}"
-            msg += f"\n<b>Size:</b> {task.size()}"
-            msg += f"\n<b>Speed:</b> {task.speed()}"
-            msg += f"\n<b>ETA:</b> {task.eta()}"
+                msg += f"<br><b>Count:</b> {count}"
+            msg += f"<br><b>Size:</b> {task.size()}"
+            msg += f"<br><b>Speed:</b> {task.speed()}"
+            msg += f"<br><b>ETA:</b> {task.eta()}"
             if (
                 tstatus == MirrorStatus.STATUS_DOWNLOAD
-                and task.listener.is_torrent
-                or task.listener.is_qbit
+                and (getattr(task.listener, "is_torrent", False) or getattr(task.listener, "is_qbit", False))
             ):
                 try:
-                    msg += f"\n<b>Seeders:</b> {task.seeders_num()} | <b>Leechers:</b> {task.leechers_num()}"
+                    s_num = task.seeders_num()
+                    l_num = task.leechers_num()
+                    if s_num is not None and l_num is not None:
+                        msg += f"<br><b>Seeders:</b> {s_num} | <b>Leechers:</b> {l_num}"
                 except:
                     pass
+            msg += f"<br><b>Elapsed:</b> {_get_elapsed_time(task)}"
+            msg += f"<br><b>Upload:</b> {_get_upload_dest(task)}"
+            msg += f"<br><b>Engine:</b> {_get_engine_name(task)}"
+            msg += f"<br><b>User:</b> {_get_user_display(task)}"
         elif tstatus == MirrorStatus.STATUS_SEED:
-            msg += f"\n<b>Size: </b>{task.size()}"
-            msg += f"\n<b>Speed: </b>{task.seed_speed()}"
-            msg += f"\n<b>Uploaded: </b>{task.uploaded_bytes()}"
-            msg += f"\n<b>Ratio: </b>{task.ratio()}"
-            msg += f" | <b>Time: </b>{task.seeding_time()}"
+            msg += f"<br><b>Size:</b> {task.size()}"
+            msg += f"<br><b>Speed:</b> {task.seed_speed()}"
+            msg += f"<br><b>Uploaded:</b> {task.uploaded_bytes()}"
+            msg += f"<br><b>Ratio:</b> {task.ratio()}"
+            msg += f" | <b>Time:</b> {task.seeding_time()}"
+            msg += f"<br><b>Elapsed:</b> {_get_elapsed_time(task)}"
+            msg += f"<br><b>Engine:</b> {_get_engine_name(task)}"
+            msg += f"<br><b>User:</b> {_get_user_display(task)}"
         else:
-            msg += f"\n<b>Size: </b>{task.size()}"
-        msg += f"\n<b>Gid: </b><code>{task.gid()}</code>\n\n"
-        task_gids.append((index + start_position, task.gid()))
+            msg += f"<br><b>Size:</b> {task.size()}"
+            msg += f"<br><b>Elapsed:</b> {_get_elapsed_time(task)}"
+            msg += f"<br><b>Upload:</b> {_get_upload_dest(task)}"
+            msg += f"<br><b>Engine:</b> {_get_engine_name(task)}"
+            msg += f"<br><b>User:</b> {_get_user_display(task)}"
 
-    if len(msg) == 0:
-        if status == "All":
-            return None, None
-        else:
-            msg = f"No Active {status} Tasks!\n\n"
+        msg += f"<br><tg-button type='callback_data' data='cancel canconf {task.gid()}' style='danger'>Cancel Task</tg-button>"
+        if (
+            (getattr(task, "tool", "") == "aria2" and getattr(task.listener, "is_torrent", False))
+            or getattr(task, "tool", "") in ["qbittorrent", "sabnzbd"]
+        ) and tstatus in [
+            MirrorStatus.STATUS_DOWNLOAD,
+            MirrorStatus.STATUS_PAUSED,
+            MirrorStatus.STATUS_QUEUEDL,
+        ]:
+            msg += f" | <tg-button type='callback_data' data='sel select {task.gid()}' style='primary'>Select Files</tg-button>"
+        if tstatus != MirrorStatus.STATUS_UPLOAD and (
+            Config.QUEUE_ALL or Config.QUEUE_DOWNLOAD or Config.QUEUE_UPLOAD
+        ):
+            if tstatus == MirrorStatus.STATUS_QUEUEDL:
+                msg += f" | <tg-button type='callback_data' data='force run {task.gid()}' style='success'>ForceRun</tg-button>"
+                msg += f" | <tg-button type='callback_data' data='force fd {task.gid()}' style='success'>ForceDl</tg-button>"
+                if not task.listener.force_upload:
+                    msg += f" | <tg-button type='callback_data' data='force fu {task.gid()}' style='success'>ForceUp</tg-button>"
+            elif not task.listener.force_upload and (
+                tstatus == MirrorStatus.STATUS_DOWNLOAD or not task.listener.force_run
+            ):
+                msg += f" | <tg-button type='callback_data' data='force fu {task.gid()}' style='success'>ForceUp</tg-button>"
+        msg += "<br><br>"
+
     buttons = ButtonMaker()
     if not is_user:
         buttons.data_button("📜", f"status {sid} ov", position="header")
     if len(tasks) > STATUS_LIMIT:
-        msg += f"<b>Page:</b> {page_no}/{pages} | <b>Tasks:</b> {tasks_no} | <b>Step:</b> {page_step}\n"
         buttons.data_button("<<", f"status {sid} pre", position="header")
         buttons.data_button(">>", f"status {sid} nex", position="header")
         if tasks_no > 30:
@@ -249,18 +420,8 @@ async def get_readable_message(sid, is_user, page_no=1, status="All", page_step=
         for label, status_value in list(STATUSES.items()):
             if status_value != status:
                 buttons.data_button(label, f"status {sid} st {status_value}")
-    buttons.data_button("♻️", f"status {sid} ref", position="header")
+    buttons.data_button("♻️", f"status {sid} ref", position="header", style="green")
     button = buttons.build_menu(8)
-    if task_gids:
-        cancel_buttons = [
-            InlineKeyboardButton(
-                text=f"❌ {num}",
-                callback_data=f"status {sid} cancel {gid}",
-            )
-            for num, gid in task_gids
-        ]
-        for i in range(0, len(cancel_buttons), 4):
-            button.inline_keyboard.append(cancel_buttons[i : i + 4])
     msg += f"<b>CPU:</b> {cpu_percent()}% | <b>FREE:</b> {get_readable_file_size(disk_usage(DOWNLOAD_DIR).free)}"
-    msg += f"\n<b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
-    return msg, button
+    msg += f"<br><b>RAM:</b> {virtual_memory().percent}% | <b>UPTIME:</b> {get_readable_time(time() - bot_start_time)}"
+    return InputRichMessage(html=msg), button

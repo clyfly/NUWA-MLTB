@@ -1,7 +1,6 @@
 from importlib import import_module
 from ast import literal_eval
 from os import getenv
-
 from bot import LOGGER
 
 
@@ -13,14 +12,20 @@ class Config:
     BASE_URL = ""
     BASE_URL_PORT = 80
     BOT_TOKEN = ""
+    PUBLIC_MODE = False    
     BUZZHEAVIER_ACCOUNT_ID = ""
     BUZZHEAVIER_FOLDER_ID = ""
     GOFILE_API_KEY = ""
+    TLDV_TOKEN = ""
     CMD_SUFFIX = ""
     CLONE_DUMP_CHATS = ""
     DATABASE_URL = ""
     DATABASE_NAME = "mltb"
+    DEDUP_ENABLED = False
+    BOT_LANGUAGE = "en"
     DEFAULT_UPLOAD = "rc"
+    DELETE_LINKS = False
+    DISABLE_SEED = False
     EQUAL_SPLITS = False
     EXCLUDED_EXTENSIONS = ""
     INCLUDED_EXTENSIONS = ""
@@ -35,8 +40,14 @@ class Config:
     JD_EMAIL = ""
     JD_PASS = ""
     LEECH_DUMP_CHAT = ""
+    LEECH_CAPTION = ""
     LEECH_FILENAME_PREFIX = ""
     LEECH_SPLIT_SIZE = 2097152000
+    MIN_LEECH_UPLOAD_SIZE = 0
+    METADATA = {}
+    AUDIO_METADATA = {}
+    VIDEO_METADATA = {}
+    SUBTITLE_METADATA = {}
     MEDIA_GROUP = False
     HYBRID_LEECH = False
     HYDRA_IP = ""
@@ -46,6 +57,8 @@ class Config:
     QUEUE_ALL = 0
     QUEUE_DOWNLOAD = 0
     QUEUE_UPLOAD = 0
+    BOT_TASK_LIMIT = 0
+    USER_TASK_LIMIT = 0
     RCLONE_FLAGS = ""
     RCLONE_PATH = ""
     RCLONE_SERVE_URL = ""
@@ -77,49 +90,39 @@ class Config:
     USE_SERVICE_ACCOUNTS = False
     WEB_PINCODE = False
     YT_DLP_OPTIONS = {}
+    # Rate limiting (0 = disabled)
+    RATE_LIMIT_PER_MIN = 0
+    RATE_LIMIT_WINDOW = 60
 
     @classmethod
-    def _convert(cls, key: str, value):
+    def _convert(cls, key, value):
         if not hasattr(cls, key):
             raise KeyError(f"{key} is not a valid configuration key.")
-
         expected_type = type(getattr(cls, key))
-
-        if value is None:
-            return None
-
-        if isinstance(value, expected_type):
+        if value and isinstance(value, expected_type):
             return value
-
         if expected_type is bool:
             return str(value).strip().lower() in {"true", "1", "yes"}
-
-        if expected_type in [list, dict]:
-            if not isinstance(value, str):
-                raise TypeError(
-                    f"{key} should be {expected_type.__name__}, got {type(value).__name__}"
-                )
-
+        if expected_type in (list, dict):
             if not value:
                 return expected_type()
-
-            try:
-                evaluated = literal_eval(value)
-                if not isinstance(evaluated, expected_type):
-                    raise TypeError(
-                        f"Expected {expected_type.__name__}, got {type(evaluated).__name__}"
-                    )
-                return evaluated
-            except (ValueError, SyntaxError, TypeError) as e:
+            if isinstance(value, str):
+                try:
+                    value = literal_eval(value)
+                except (ValueError, SyntaxError) as exc:
+                    raise TypeError(f"Invalid value for {key}: {value!r}") from exc
+            if not isinstance(value, expected_type):
                 raise TypeError(
-                    f"{key} should be {expected_type.__name__}, got invalid string: {value}"
-                ) from e
-
+                    f"{key} should be {expected_type.__name__}, "
+                    f"got {type(value).__name__}"
+                )
+            return value
         try:
             return expected_type(value)
         except (ValueError, TypeError) as exc:
             raise TypeError(
-                f"Invalid type for {key}: expected {expected_type}, got {type(value)}"
+                f"Invalid type for {key}: expected {expected_type.__name__}, "
+                f"got {type(value).__name__}"
             ) from exc
 
     @classmethod
@@ -150,29 +153,23 @@ class Config:
 
     @classmethod
     def _process_config_value(cls, attr: str, value):
-        if not value:
-            return None
-
         converted_value = cls._convert(attr, value)
-
         if isinstance(converted_value, str):
             converted_value = converted_value.strip()
-
-        if attr == "DEFAULT_UPLOAD" and converted_value not in {"gd", "bh", "gf"}:
+        if attr == "DEFAULT_UPLOAD" and converted_value not in {"gd", "bh", "gf", "rc"}:
             return "rc"
-
+        if attr == "MIN_LEECH_UPLOAD_SIZE":
+            return max(int(converted_value), 0)
         if attr in {
             "BASE_URL",
             "RCLONE_SERVE_URL",
             "SEARCH_API_LINK",
         }:
             return converted_value.strip("/") if converted_value else ""
-
         if attr == "USENET_SERVERS" and (
             not converted_value or not converted_value[0].get("host")
         ):
-            return None
-
+            return []
         return converted_value
 
     @classmethod
@@ -181,16 +178,12 @@ class Config:
             settings = import_module("config")
         except ModuleNotFoundError:
             return False
-
         for attr in dir(settings):
             if not cls._is_valid_config_attr(attr):
                 continue
-
             raw_value = getattr(settings, attr)
             processed_value = cls._process_config_value(attr, raw_value)
-
-            if processed_value is not None:
-                setattr(cls, attr, processed_value)
+            setattr(cls, attr, processed_value)
 
         return True
 
@@ -205,8 +198,7 @@ class Config:
                 continue
 
             processed_value = cls._process_config_value(attr, env_value)
-            if processed_value is not None:
-                setattr(cls, attr, processed_value)
+            setattr(cls, attr, processed_value)
 
     @classmethod
     def _validate_required_config(cls) -> None:
@@ -234,13 +226,6 @@ class Config:
         for key, value in config_dict.items():
             if not hasattr(cls, key):
                 continue
-
             processed_value = cls._process_config_value(key, value)
-
-            if key == "USENET_SERVERS" and processed_value is None:
-                processed_value = []
-
-            if processed_value is not None:
-                setattr(cls, key, processed_value)
-
+            setattr(cls, key, processed_value)
         cls._validate_required_config()

@@ -27,9 +27,13 @@ class FFmpegStatus:
         return self._gid
 
     def name(self):
+        if self._cstatus == "Metadata" and self.listener.subname:
+            return self.listener.subname
         return self.listener.name
 
     def size(self):
+        if self._cstatus == "Metadata" and self.listener.subsize:
+            return get_readable_file_size(self.listener.subsize)
         return get_readable_file_size(self.listener.size)
 
     def eta(self):
@@ -42,6 +46,8 @@ class FFmpegStatus:
             return MirrorStatus.STATUS_SPLIT
         elif self._cstatus == "Sample Video":
             return MirrorStatus.STATUS_SAMVID
+        elif self._cstatus == "Metadata":
+            return MirrorStatus.STATUS_METADATA
         else:
             return MirrorStatus.STATUS_FFMPEG
 

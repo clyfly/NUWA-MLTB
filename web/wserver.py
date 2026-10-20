@@ -249,6 +249,25 @@ async def homepage(request: Request):
     )
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Heroku and monitoring."""
+    from time import time
+    from psutil import virtual_memory, cpu_percent, disk_usage
+    try:
+        mem = virtual_memory()
+        disk = disk_usage("/")
+        return JSONResponse({
+            "status": "ok",
+            "uptime": int(time() - __import__("bot").bot_start_time) if hasattr(__import__("bot", fromlist=["bot_start_time"]), "bot_start_time") else 0,
+            "memory_percent": mem.percent,
+            "disk_free_gb": round(disk.free / (1024**3), 2),
+            "cpu_percent": cpu_percent(interval=0.1),
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
+
+
 @app.exception_handler(Exception)
 async def page_not_found(_, exc):
     return HTMLResponse(

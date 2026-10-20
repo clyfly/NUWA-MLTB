@@ -29,6 +29,7 @@ from ..helper.mirror_leech_utils.status_utils.gdrive_status import GoogleDriveSt
 from ..helper.mirror_leech_utils.status_utils.rclone_status import RcloneStatus
 from ..helper.telegram_helper.message_utils import (
     send_message,
+    delete_links,
     delete_message,
     send_status_message,
 )
@@ -112,14 +113,17 @@ class Clone(TaskListener):
             await send_message(
                 self.message, COMMAND_USAGE["clone"][0], COMMAND_USAGE["clone"][1]
             )
+            await delete_links(self.message)
             return
         LOGGER.info(self.link)
         try:
             await self.before_start()
         except Exception as e:
             await send_message(self.message, e)
+            await delete_links(self.message)
             return
         await self._proceed_to_clone(sync)
+        await delete_links(self.message)
 
     async def _proceed_to_clone(self, sync):
         if is_share_link(self.link):

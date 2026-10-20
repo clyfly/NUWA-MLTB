@@ -51,7 +51,10 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             cancel,
-            filters=regex(rf"^/{BotCommands.CancelTaskCommand[1]}?(?:_\w+).*$")
+            filters=(
+                command(BotCommands.CancelTaskCommand, case_sensitive=True)
+                | regex(rf"^/{BotCommands.CancelTaskCommand[1]}?(?:_\w+).*$")
+            )
             & CustomFilters.authorized,
         )
     )
@@ -66,7 +69,7 @@ def add_handlers():
         CallbackQueryHandler(cancel_all_update, filters=regex("^canall"))
     )
     TgClient.bot.add_handler(
-        CallbackQueryHandler(cancel_multi, filters=regex("^stopm"))
+        CallbackQueryHandler(cancel_updates, filters=regex("^cancel"))
     )
     TgClient.bot.add_handler(
         MessageHandler(
@@ -105,6 +108,9 @@ def add_handlers():
     )
     TgClient.bot.add_handler(
         CallbackQueryHandler(confirm_selection, filters=regex("^sel"))
+    )
+    TgClient.bot.add_handler(
+        CallbackQueryHandler(remove_from_queue_callback, filters=regex("^force"))
     )
     TgClient.bot.add_handler(
         MessageHandler(
@@ -322,9 +328,7 @@ def add_handlers():
     TgClient.bot.add_handler(
         MessageHandler(
             gallery_dl_leech,
-            filters=command(
-                BotCommands.GallerydlLeechCommand, case_sensitive=True
-            )
+            filters=command(BotCommands.GallerydlLeechCommand, case_sensitive=True)
             & CustomFilters.authorized,
         )
     )
@@ -342,5 +346,33 @@ def add_handlers():
             hydra_search,
             filters=command(BotCommands.NzbSearchCommand, case_sensitive=True)
             & CustomFilters.authorized,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            analytics_stats,
+            filters=command(BotCommands.AnalyticsCommand, case_sensitive=True)
+            & CustomFilters.owner,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            ban_user,
+            filters=command(BotCommands.BanCommand, case_sensitive=True)
+            & CustomFilters.sudo,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            unban_user,
+            filters=command(BotCommands.UnbanCommand, case_sensitive=True)
+            & CustomFilters.sudo,
+        )
+    )
+    TgClient.bot.add_handler(
+        MessageHandler(
+            list_banned,
+            filters=command(BotCommands.BanListCommand, case_sensitive=True)
+            & CustomFilters.sudo,
         )
     )

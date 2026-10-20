@@ -87,7 +87,7 @@ link6 will get uploaded normally alone
 
 thumb = """<b>Thumbnail for current task</b>: -t
 
-/cmd link -t tg-message-link (doc or photo) or none (file without thumb)"""
+/cmd link -t tg-message-link (doc or photo) or direct-image-url, or none (file without thumb)"""
 
 split_size = """<b>Split size for current task</b>: -sp
 
@@ -312,6 +312,21 @@ waits for TorBox to finish/cache it, then downloads each file from TorBox CDN li
 
 Requires <code>TORBOX_API_KEY</code> in bot configuration."""
 
+metadata_help = """<b>Metadata</b>: -meta
+/cmd link -meta title={basename}|date={year}
+Apply metadata to downloaded audio/video files before upload. Command values override matching bot/user defaults.
+
+Set defaults in User Settings → Metadata Settings:
+• Global: metadata for the file/container
+• Video Metadata: metadata for every video stream
+• Audio Metadata: metadata for each audio stream
+• Subtitle Metadata: metadata for each subtitle stream
+
+Available variables: {filename}, {basename}, {extension}, {audiolang}, {sublang}, {year}.
+For stream-specific settings, {audiolang} or {sublang} is resolved for that stream.
+Separate key/value pairs with |. Use \\| for a literal pipe in a value."""
+
+
 YT_HELP_DICT = {
     "main": yt,
     "New-Name": f"{new_name}\nNote: Don't add file extension",
@@ -334,6 +349,7 @@ YT_HELP_DICT = {
     "Thumb-Layout": thumbnail_layout,
     "Leech-Type": leech_as,
     "FFmpeg-Cmds": ffmpeg_cmds,
+    "Metadata": metadata_help,
 }
 
 GDL_HELP_DICT = {
@@ -389,6 +405,7 @@ MIRROR_HELP_DICT = {
     "FFmpeg-Cmds": ffmpeg_cmds,
     "AllDebrid": alldebrid_arg,
     "TorBox": torbox_arg,
+    "Metadata": metadata_help,
 }
 
 CLONE_HELP_DICT = {
@@ -431,6 +448,18 @@ PASSWORD_ERROR_MESSAGE = """
 """
 
 user_settings_text = {
+    "METADATA": """Send global metadata as key=value pairs separated by |.
+Example: title={basename}|date={year}|comment=Downloaded by the bot
+Variables: {filename}, {basename}, {extension}, {audiolang}, {sublang}, {year}. Escape a literal pipe as \\|.""",
+    "AUDIO_METADATA": """Send audio-stream metadata as key=value pairs separated by |.
+Example: title={basename} ({audiolang})|comment=Audio stream
+Variables: {filename}, {basename}, {extension}, {audiolang}, {sublang}, {year}. Escape a literal pipe as \\|.""",
+    "VIDEO_METADATA": """Send video-stream metadata as key=value pairs separated by |.
+Example: title={basename}|date={year}
+Variables: {filename}, {basename}, {extension}, {audiolang}, {sublang}, {year}. Escape a literal pipe as \\|.""",
+    "SUBTITLE_METADATA": """Send subtitle-stream metadata as key=value pairs separated by |.
+Example: title={basename} ({sublang})|language={sublang}
+Variables: {filename}, {basename}, {extension}, {audiolang}, {sublang}, {year}. Escape a literal pipe as \\|.""",
     "LEECH_SPLIT_SIZE": f"Send Leech split size in bytes or use gb or mb. Example: 40000000 or 2.5gb or 1000mb. IS_PREMIUM_USER: {TgClient.IS_PREMIUM_USER}. Timeout: 60 sec",
     "LEECH_DUMP_CHAT": """Send leech destination ID/USERNAME/PM.
 * b:id/@username/pm (b: means leech by bot) (id or username of the chat or write pm means private message so bot will send the files in private to you) when you should use b:(leech by bot)? When your default settings is leech by user and you want to leech by bot for specific task.
@@ -438,6 +467,8 @@ user_settings_text = {
 * h:id/@username(hybrid leech) h: to upload files by bot and user based on file size.
 * id/@username|topic_id(leech in specific chat and topic) add | without space and write topic id after chat id or username. Timeout: 60 sec""",
     "LEECH_FILENAME_PREFIX": r"Send Leech Filename Prefix. You can add HTML tags. Example: <code>@mychannel</code>. Timeout: 60 sec",
+    "LEECH_CAPTION": r"""Send Leech Captions template. HTML allowed.
+Replaces the whole caption. Fill in {filename} {size} {duration} {quality} {languages} {subtitles} {md5_hash} {mime_type} {prefilename} {precaption}, then add |find:replace[:count] parts to patch the result. Escape a real one with \| \{ \}. Use \s for a space. Timeout: 60 sec""",
     "THUMBNAIL_LAYOUT": "Send thumbnail layout (widthxheight, 2x2, 3x3, 2x4, 4x4, ...). Example: 3x3. Timeout: 60 sec",
     "RCLONE_PATH": "Send Rclone Path. If you want to use your rclone config edit using owner/user config from usetting or add mt: before rclone path. Example mt:remote:folder. Timeout: 60 sec",
     "RCLONE_FLAGS": "key:value|key|key|key:value . Check here all <a href='https://rclone.org/flags/'>RcloneFlags</a>\nEx: --buffer-size:8M|--drive-starred-only",
@@ -478,6 +509,7 @@ Format: {key: value, key: value, key: value}.
 Example: {"cookies": "cookies.txt", "proxy": "http://proxy:8080", "image-range": "1-50", "extractor": {"pixiv": {"username": "user", "password": "pass"}}}
 Check gallery-dl configuration options from this <a href='https://github.com/mikf/gallery-dl/blob/master/docs/configuration.rst'>FILE</a>.""",
     "CLONE_DUMP_CHATS": "Send List/Int/Str Chat_id/username|thread_id. Example: -100xxxx555|5 or @dumpchat|8 or @mltb_dump or pm or List like: [-100xxx885552|6, '@username', 65585541254, 'pm']",
+    "USER_LANGUAGE": "Send language code. Available: en (English), hi (Hindi), ar (Arabic), id (Indonesian), tr (Turkish), pt (Portuguese), bn (Bengali). Example: hi\nTimeout: 60 sec",
 }
 
 

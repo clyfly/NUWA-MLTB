@@ -1,10 +1,10 @@
 from .bot_settings import send_bot_settings, edit_bot_settings
-from .cancel_task import cancel, cancel_multi, cancel_all_buttons, cancel_all_update
+from .cancel_task import cancel, cancel_updates, cancel_all_buttons, cancel_all_update
 from .chat_permission import authorize, unauthorize, add_sudo, remove_sudo
 from .clone import clone_node
 from .exec import aioexecute, execute, clear
 from .file_selector import select, confirm_selection
-from .force_start import remove_from_queue
+from .force_start import remove_from_queue, remove_from_queue_callback
 from .gd_count import count_node
 from .gd_delete import delete_file
 from .gd_search import gdrive_search, select_type
@@ -29,18 +29,19 @@ from .search import torrent_search, torrent_search_update, initiate_search_tools
 from .nzb_search import hydra_search
 from .services import start, ping, log
 from .shell import run_shell
-from .stats import bot_stats, get_packages_version
+from .stats import bot_stats, get_packages_version, analytics_stats
 from .status import task_status, status_pages
 from .users_settings import get_users_settings, edit_user_settings, send_user_settings
 from .ytdlp import ytdl, ytdl_leech
 from .gallery_dl import gallery_dl, gallery_dl_leech
 from .speedtest import speedtest
+from .ban_manager import ban_user, unban_user, list_banned
 
 __all__ = [
     "send_bot_settings",
     "edit_bot_settings",
     "cancel",
-    "cancel_multi",
+    "cancel_updates",
     "cancel_all_buttons",
     "cancel_all_update",
     "authorize",
@@ -55,6 +56,7 @@ __all__ = [
     "select",
     "confirm_selection",
     "remove_from_queue",
+    "remove_from_queue_callback",
     "count_node",
     "delete_file",
     "gdrive_search",
@@ -82,6 +84,7 @@ __all__ = [
     "log",
     "run_shell",
     "bot_stats",
+    "analytics_stats",
     "get_packages_version",
     "task_status",
     "status_pages",
@@ -93,4 +96,7 @@ __all__ = [
     "gallery_dl",
     "gallery_dl_leech",
     "speedtest",
+    "ban_user",
+    "unban_user",
+    "list_banned",
 ]

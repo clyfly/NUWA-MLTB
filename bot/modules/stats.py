@@ -12,7 +12,7 @@ from psutil import (
     boot_time,
 )
 
-from .. import bot_start_time
+from .. import bot_start_time, task_dict
 from ..helper.ext_utils.status_utils import get_readable_file_size, get_readable_time
 from ..helper.ext_utils.bot_utils import cmd_exec, new_task
 from ..helper.telegram_helper.message_utils import send_message
@@ -73,6 +73,35 @@ async def bot_stats(_, message):
 <b>7z:</b> {commands["7z"]}
 """
     await send_message(message, stats)
+
+
+@new_task
+async def analytics_stats(_, message):
+    """Show download/upload analytics for the bot owner."""
+    from ..helper.ext_utils.analytics import get_global_stats, get_user_stats
+    from ..helper.ext_utils.bot_utils import get_readable_file_size as grfs
+
+    gstats = get_global_stats()
+    active_tasks = len(task_dict)
+
+    msg = f"""<b>📊 Bot Analytics</b>
+
+<b>Active Tasks:</b> {active_tasks}
+<b>Total Users:</b> {gstats['total_users']}
+<b>Total Downloads:</b> {gstats['total_downloads']}
+<b>Total Uploads:</b> {gstats['total_uploads']}
+<b>Downloaded:</b> {grfs(gstats['total_bytes_downloaded'])}
+<b>Uploaded:</b> {grfs(gstats['total_bytes_uploaded'])}
+<b>Completed:</b> {gstats['total_completed']}
+<b>Failed:</b> {gstats['total_failed']}
+"""
+    success_rate = 0
+    total = gstats['total_completed'] + gstats['total_failed']
+    if total > 0:
+        success_rate = round((gstats['total_completed'] / total) * 100, 1)
+    msg += f"<b>Success Rate:</b> {success_rate}%"
+
+    await send_message(message, msg)
 
 
 async def get_version_async(command, regex):

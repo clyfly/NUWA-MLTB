@@ -14,11 +14,15 @@ class TelegramStatus:
         self._status = status
         self.tool = "telegram"
 
+    def _total_size(self):
+        # Upload size shrinks when files are skipped (MIN_LEECH_UPLOAD_SIZE)
+        return self.listener.size if self._status == "up" else self._size
+
     def processed_bytes(self):
         return get_readable_file_size(self._obj.processed_bytes)
 
     def size(self):
-        return get_readable_file_size(self._size)
+        return get_readable_file_size(self._total_size())
 
     def status(self):
         if self._status == "up":
@@ -30,7 +34,7 @@ class TelegramStatus:
 
     def progress(self):
         try:
-            progress_raw = self._obj.processed_bytes / self._size * 100
+            progress_raw = self._obj.processed_bytes / self._total_size() * 100
         except:
             progress_raw = 0
         return f"{round(progress_raw, 2)}%"
@@ -40,7 +44,7 @@ class TelegramStatus:
 
     def eta(self):
         try:
-            seconds = (self._size - self._obj.processed_bytes) / self._obj.speed
+            seconds = (self._total_size() - self._obj.processed_bytes) / self._obj.speed
             return get_readable_time(seconds)
         except:
             return "-"

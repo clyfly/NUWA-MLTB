@@ -1,6 +1,8 @@
 from aiofiles.os import path as aiopath, listdir, remove
 from asyncio import sleep, gather
 from html import escape
+from mimetypes import guess_type
+from os import path as ospath
 from requests import utils as rutils
 
 from ... import (
@@ -34,6 +36,7 @@ from ..ext_utils.files_utils import (
 from ..ext_utils.links_utils import is_gdrive_id
 from ..ext_utils.status_utils import get_readable_file_size
 from ..ext_utils.task_manager import start_from_queued, check_running_tasks
+from ..ext_utils.dedup import register_download
 from ..mirror_leech_utils.gdrive_utils.upload import GoogleDriveUpload
 from ..mirror_leech_utils.rclone_utils.transfer import RcloneTransferHelper
 from ..mirror_leech_utils.upload_utils.buzzheavier_uploader import BuzzHeavierUploader
@@ -48,6 +51,7 @@ from ..mirror_leech_utils.upload_utils.telegram_uploader import TelegramUploader
 from ..telegram_helper.button_build import ButtonMaker
 from ..telegram_helper.message_utils import (
     send_message,
+    delete_links,
     delete_status,
     update_status_message,
 )
@@ -56,6 +60,11 @@ from ..telegram_helper.message_utils import (
 class TaskListener(TaskConfig):
     def __init__(self):
         super().__init__()
+
+    @property
+    def chat_id(self):
+        chat = getattr(getattr(self, "message", None), "chat", None)
+        return getattr(chat, "id", None) or getattr(self, "user_id", None)
 
     async def clean(self):
         try:
@@ -89,9 +98,10 @@ class TaskListener(TaskConfig):
             self.is_super_chat
             and Config.INCOMPLETE_TASK_NOTIFIER
             and Config.DATABASE_URL
+            and self.chat_id
         ):
             await database.add_incomplete_task(
-                self.message.chat.id, self.message.link, self.tag
+                self.chat_id, getattr(self.message, "link", ""), self.tag
             )
 
     async def on_download_complete(self):
@@ -166,6 +176,15 @@ class TaskListener(TaskConfig):
         dl_path = f"{self.dir}/{self.name}"
         self.size = await get_path_size(dl_path)
         self.is_file = await aiopath.isfile(dl_path)
+
+        # Register in dedup cache
+        await register_download(
+            name=self.name,
+            size=self.size,
+            url=getattr(self, "link", "") if isinstance(getattr(self, "link", ""), str) else "",
+            user_id=self.user_id,
+            path=dl_path,
+        )
 
         if self.seed:
             up_dir = self.up_dir = f"{self.dir}10000"
@@ -261,6 +280,32 @@ class TaskListener(TaskConfig):
             self.size = await get_path_size(up_dir)
             self.clear()
 
+        if any(
+            (
+                self.metadata_dict,
+                self.audio_metadata_dict,
+                self.video_metadata_dict,
+                self.subtitle_metadata_dict,
+            )
+        ):
+            from ...modules.metadata import apply_metadata_title
+
+            up_path = await apply_metadata_title(
+                self,
+                up_path,
+                gid,
+                self.metadata_dict,
+                self.audio_metadata_dict,
+                self.video_metadata_dict,
+                self.subtitle_metadata_dict,
+            )
+            if self.is_cancelled:
+                return
+            self.is_file = await aiopath.isfile(up_path)
+            self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
+            self.size = await get_path_size(up_dir)
+            self.clear()
+
         if self.compress:
             up_path = await self.proceed_compress(
                 up_path,
@@ -273,6 +318,11 @@ class TaskListener(TaskConfig):
 
         self.name = up_path.replace(f"{up_dir}/", "").split("/", 1)[0]
         self.size = await get_path_size(up_dir)
+
+        if self.is_leech and self.is_file:
+            filename = ospath.basename(up_path)
+            self.file_details["filename"] = filename
+            self.file_details["mime_type"] = guess_type(filename)[0] or "text/plain"
 
         if self.is_leech and not self.compress:
             await self.proceed_split(up_path, gid)
@@ -301,7 +351,7 @@ class TaskListener(TaskConfig):
             async with task_dict_lock:
                 task_dict[self.mid] = TelegramStatus(self, tg, gid, "up")
             await gather(
-                update_status_message(self.message.chat.id),
+                update_status_message(self.chat_id),
                 tg.upload(),
             )
             del tg
@@ -311,7 +361,7 @@ class TaskListener(TaskConfig):
             async with task_dict_lock:
                 task_dict[self.mid] = BuzzHeavierStatus(self, bh, gid, "up")
             await gather(
-                update_status_message(self.message.chat.id),
+                update_status_message(self.chat_id),
                 bh.upload(),
             )
             del bh
@@ -321,7 +371,7 @@ class TaskListener(TaskConfig):
             async with task_dict_lock:
                 task_dict[self.mid] = GoFileStatus(self, gf, gid, "up")
             await gather(
-                update_status_message(self.message.chat.id),
+                update_status_message(self.chat_id),
                 gf.upload(),
             )
             del gf
@@ -331,7 +381,7 @@ class TaskListener(TaskConfig):
             async with task_dict_lock:
                 task_dict[self.mid] = GoogleDriveStatus(self, drive, gid, "up")
             await gather(
-                update_status_message(self.message.chat.id),
+                update_status_message(self.chat_id),
                 sync_to_async(drive.upload),
             )
             del drive
@@ -341,14 +391,21 @@ class TaskListener(TaskConfig):
             async with task_dict_lock:
                 task_dict[self.mid] = RcloneStatus(self, RCTransfer, gid, "up")
             await gather(
-                update_status_message(self.message.chat.id),
+                update_status_message(self.chat_id),
                 RCTransfer.upload(up_path),
             )
             del RCTransfer
         return
 
     async def on_upload_complete(
-        self, link, files, folders, mime_type, rclone_path="", dir_id=""
+        self,
+        link,
+        files,
+        folders,
+        mime_type,
+        rclone_path="",
+        dir_id="",
+        skipped=None,
     ):
         if (
             self.is_super_chat
@@ -362,6 +419,19 @@ class TaskListener(TaskConfig):
             msg += f"\n<b>Total Files: </b>{folders}"
             if mime_type != 0:
                 msg += f"\n<b>Corrupted Files: </b>{mime_type}"
+            if skipped:
+                msg += (
+                    f"\n<b>Skipped Files: </b>{len(skipped)} "
+                    f"(smaller than {Config.MIN_LEECH_UPLOAD_SIZE} MB, not uploaded)"
+                )
+                smsg = ""
+                for index, (name, size) in enumerate(skipped):
+                    line = f"\n- <code>{escape(name)}</code> ({get_readable_file_size(size)})"
+                    if len(smsg) + len(line) > 1500:
+                        smsg += f"\n- ... and {len(skipped) - index} more"
+                        break
+                    smsg += line
+                msg += smsg
             msg += f"\n<b>cc: </b>{self.tag}\n\n"
             if not files:
                 await send_message(self.message, msg)
@@ -427,6 +497,7 @@ class TaskListener(TaskConfig):
                     non_queued_up.remove(self.mid)
             await start_from_queued()
             return
+        await delete_links(self.message)
         await clean_download(self.dir)
         async with task_dict_lock:
             if self.mid in task_dict:
@@ -434,8 +505,8 @@ class TaskListener(TaskConfig):
             count = len(task_dict)
         if count == 0:
             await self.clean()
-        else:
-            await update_status_message(self.message.chat.id)
+        elif self.chat_id:
+            await update_status_message(self.chat_id)
 
         async with queue_dict_lock:
             if self.mid in non_queued_up:
@@ -483,15 +554,17 @@ class TaskListener(TaskConfig):
         self._torbox_web_id = 0
         msg = f"{self.tag} Download: {escape(str(error))}"
         await send_message(self.message, msg, button)
+        await delete_links(self.message)
         if count == 0:
             await self.clean()
-        else:
-            await update_status_message(self.message.chat.id)
+        elif self.chat_id:
+            await update_status_message(self.chat_id)
 
         if (
             self.is_super_chat
             and Config.INCOMPLETE_TASK_NOTIFIER
             and Config.DATABASE_URL
+            and getattr(self.message, "link", None)
         ):
             await database.rm_complete_task(self.message.link)
 
@@ -521,15 +594,17 @@ class TaskListener(TaskConfig):
                 del task_dict[self.mid]
             count = len(task_dict)
         await send_message(self.message, f"{self.tag} {escape(str(error))}")
+        await delete_links(self.message)
         if count == 0:
             await self.clean()
-        else:
-            await update_status_message(self.message.chat.id)
+        elif self.chat_id:
+            await update_status_message(self.chat_id)
 
         if (
             self.is_super_chat
             and Config.INCOMPLETE_TASK_NOTIFIER
             and Config.DATABASE_URL
+            and getattr(self.message, "link", None)
         ):
             await database.rm_complete_task(self.message.link)
 

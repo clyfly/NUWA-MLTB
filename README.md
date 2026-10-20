@@ -163,6 +163,10 @@ Copy `config_sample.py` to `config.py` and fill in the values. For the full list
 | `LEECH_DUMP_CHAT` | Chat ID where leeched files will be sent |
 | `USER_SESSION_STRING` | Pyrogram user session for premium Telegram features |
 | `AUTHORIZED_CHATS` | Space-separated chat or user IDs allowed to use the bot |
+| `DELETE_LINKS` | Automatically delete commands and replied-to link messages (`True`/`False`) |
+| `MIN_LEECH_UPLOAD_SIZE` | Minimum file size in MB for Telegram uploads (smaller files skipped, default `0`) |
+| `LEECH_CAPTION` | Global template caption for leeched files |
+
 
 ---
 

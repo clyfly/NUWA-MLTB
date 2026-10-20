@@ -1,5 +1,6 @@
 from httpx import AsyncClient
 from asyncio.subprocess import PIPE
+from ast import literal_eval as _literal_eval
 from functools import partial, wraps
 from concurrent.futures import ThreadPoolExecutor
 from asyncio import (
@@ -7,9 +8,11 @@ from asyncio import (
     create_subprocess_shell,
     run_coroutine_threadsafe,
     sleep,
+    wait_for,
+    TimeoutError as AsyncTimeoutError,
 )
 
-from ... import user_data, bot_loop
+from ... import user_data, bot_loop, LOGGER
 from ...core.config_manager import Config
 from ..telegram_helper.button_build import ButtonMaker
 from .telegraph_helper import telegraph
@@ -22,7 +25,10 @@ from .help_messages import (
 
 COMMAND_USAGE = {}
 
-THREAD_POOL = ThreadPoolExecutor(max_workers=500)
+# Configurable thread pool size based on available resources
+from os import cpu_count as _cpu_count
+_MAX_WORKERS = min(500, max(32, (_cpu_count() or 4) * 32))
+THREAD_POOL = ThreadPoolExecutor(max_workers=_MAX_WORKERS)
 
 
 class SetInterval:
@@ -68,7 +74,7 @@ def bt_selection_buttons(id_):
             "Select Files", f"{Config.BASE_URL}/app/files?gid={id_}&pin={pin}"
         )
     buttons.data_button("Done Selecting", f"sel done {gid} {id_}")
-    buttons.data_button("Cancel", f"sel cancel {gid}")
+    buttons.data_button("Close", "sel close")
     return buttons.build_menu(2)
 
 
@@ -119,8 +125,19 @@ def arg_parser(items, arg_base):
         "-tb",
     }
 
+    disabled_args = set()
+
+    if Config.DISABLE_SEED and "-d" in items:
+        arg_base["-d"] = False
+        disabled_args.add("-d")
+
     while i < total:
         part = items[i]
+
+        if part in disabled_args:
+            i += 1
+            continue
+
 
         if part in arg_base:
             if arg_start == -1:
@@ -174,7 +191,7 @@ def arg_parser(items, arg_base):
                             arg_base[part].add(value)
                         else:
                             try:
-                                arg_base[part].add(tuple(eval(value)))
+                                arg_base[part].add(tuple(_literal_eval(value)))
                             except:
                                 pass
                     else:
@@ -205,9 +222,10 @@ def get_size_bytes(size):
 async def get_content_type(url):
     try:
         async with AsyncClient() as client:
-            response = await client.get(url, allow_redirects=True, verify=False)
+            response = await client.get(url, allow_redirects=True, verify=True, follow_redirects=True)
             return response.headers.get("Content-Type")
-    except:
+    except Exception as e:
+        LOGGER.debug(f"get_content_type failed for {url}: {e}")
         return None
 
 
@@ -216,19 +234,33 @@ def update_user_ldata(id_, key, value):
     user_data[id_][key] = value
 
 
-async def cmd_exec(cmd, shell=False):
+async def cmd_exec(cmd, shell=False, timeout=0):
+    """Execute a command asynchronously and return (stdout, stderr, returncode).
+
+    Args:
+        cmd: Command as list (or string when *shell=True*).
+        shell: Run through the system shell when ``True``.
+        timeout: Optional timeout in seconds (0 = no timeout).
+    """
     if shell:
         proc = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
     else:
         proc = await create_subprocess_exec(*cmd, stdout=PIPE, stderr=PIPE)
-    stdout, stderr = await proc.communicate()
+    try:
+        if timeout > 0:
+            stdout, stderr = await wait_for(proc.communicate(), timeout)
+        else:
+            stdout, stderr = await proc.communicate()
+    except (AsyncTimeoutError, TimeoutError):
+        proc.kill()
+        return "", "Command timed out", -1
     try:
         stdout = stdout.decode().strip()
-    except:
+    except UnicodeDecodeError:
         stdout = "Unable to decode the response!"
     try:
         stderr = stderr.decode().strip()
-    except:
+    except UnicodeDecodeError:
         stderr = "Unable to decode the error!"
     return stdout, stderr, proc.returncode
 

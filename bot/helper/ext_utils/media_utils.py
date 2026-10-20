@@ -1,4 +1,5 @@
 from PIL import Image
+from aiofiles import open as aiopen
 from aiofiles.os import remove, path as aiopath, makedirs
 from asyncio import (
     create_subprocess_exec,
@@ -6,6 +7,11 @@ from asyncio import (
     wait_for,
 )
 from asyncio.subprocess import PIPE
+from contextlib import suppress
+from hashlib import md5
+from json import loads
+from langcodes import Language
+from httpx import AsyncClient
 from os import path as ospath
 from re import search as re_search, escape
 from time import time
@@ -26,8 +32,48 @@ async def create_thumb(msg, _id=""):
     await makedirs(path, exist_ok=True)
     photo_dir = await msg.download()
     output = ospath.join(path, f"{_id}.jpg")
-    await sync_to_async(Image.open(photo_dir).convert("RGB").save, output, "JPEG")
+    await sync_to_async(convert_thumb, photo_dir, output)
     await remove(photo_dir)
+    return output
+
+
+def convert_thumb(source, output):
+    with Image.open(source) as image:
+        image.thumbnail((320, 320))
+        image = image.convert("RGB")
+        for quality in (95, 90, 85, 80, 75, 70, 60, 50, 40, 30, 20):
+            image.save(output, "JPEG", quality=quality, optimize=True)
+            if ospath.getsize(output) <= 204800:
+                break
+
+
+async def download_thumb(url):
+    thumb_dir = ospath.join(DOWNLOAD_DIR, "thumbnails")
+    await makedirs(thumb_dir, exist_ok=True)
+    output = ospath.join(thumb_dir, "{}.jpg".format(int(time() * 1000000)))
+    temp = output + ".download"
+    try:
+        async with AsyncClient(follow_redirects=True, timeout=30) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                content_size = response.headers.get("content-length", "")
+                if content_size.isdigit() and int(content_size) > 20971520:
+                    raise ValueError("Thumbnail image exceeds 20 MB")
+                size = 0
+                async with aiopen(temp, "wb") as file_obj:
+                    async for chunk in response.aiter_bytes(65536):
+                        size += len(chunk)
+                        if size > 20971520:
+                            raise ValueError("Thumbnail image exceeds 20 MB")
+                        await file_obj.write(chunk)
+        await sync_to_async(convert_thumb, temp, output)
+    except Exception:
+        if await aiopath.exists(temp):
+            await remove(temp)
+        if await aiopath.exists(output):
+            await remove(output)
+        raise
+    await remove(temp)
     return output
 
 
@@ -35,34 +81,102 @@ def ffconcat_escape(path):
     return path.replace("'", r"'\''")
 
 
-async def get_media_info(path):
+def get_md5_hash(path):
+    digest = md5()
+    with open(path, "rb") as file_obj:
+        for chunk in iter(lambda: file_obj.read(4096), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+async def get_media_info(path, extra_info=False):
     try:
-        result = await cmd_exec(
-            [
-                "ffprobe",
-                "-hide_banner",
-                "-loglevel",
-                "error",
-                "-print_format",
-                "json",
-                "-show_format",
-                path,
-            ]
-        )
+        command = [
+            "ffprobe",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-print_format",
+            "json",
+            "-show_format",
+        ]
+        if extra_info:
+            command.append("-show_streams")
+        command.append(path)
+        result = await cmd_exec(command)
     except Exception as e:
-        LOGGER.error(f"Get Media Info: {e}. Mostly File not found! - File: {path}")
-        return 0, None, None
+        LOGGER.error(
+            "Get Media Info: {}. Mostly File not found! - File: {}".format(e, path)
+        )
+        return (0, "", "", "") if extra_info else (0, None, None)
     if result[0] and result[2] == 0:
-        fields = eval(result[0]).get("format")
+        media_info = loads(result[0])
+        fields = media_info.get("format")
         if fields is None:
-            LOGGER.error(f"get_media_info: {result}")
-            return 0, None, None
+            LOGGER.error("get_media_info: {}".format(result))
+            return (0, "", "", "") if extra_info else (0, None, None)
         duration = round(float(fields.get("duration", 0)))
+        if extra_info:
+            quality = ""
+            languages = []
+            subtitles = []
+            streams = media_info.get("streams", [])
+            if streams and streams[0].get("codec_type") == "video":
+                try:
+                    height = int(streams[0].get("height", 0))
+                except (TypeError, ValueError):
+                    height = 0
+                if height:
+                    levels = (480, 540, 720, 1080, 2160, 4320, 8640)
+                    level = next(
+                        (item for item in levels if height <= item), levels[-1]
+                    )
+                    quality = str(level) + "p"
+                for stream in streams:
+                    stream_type = stream.get("codec_type")
+                    tags = stream.get("tags", {})
+                    if stream_type == "audio":
+                        language = tags.get("language")
+                        target = languages
+                    elif stream_type == "subtitle":
+                        language = tags.get("language")
+                        target = subtitles
+                    else:
+                        continue
+                    if language:
+                        with suppress(Exception):
+                            language = Language.get(language).display_name()
+                        if language not in target:
+                            target.append(language)
+            return duration, quality, ", ".join(languages), ", ".join(subtitles)
         tags = fields.get("tags", {})
         artist = tags.get("artist") or tags.get("ARTIST") or tags.get("Artist")
         title = tags.get("title") or tags.get("TITLE") or tags.get("Title")
         return duration, artist, title
-    return 0, None, None
+    return (0, "", "", "") if extra_info else (0, None, None)
+
+
+async def get_streams(path):
+    result = await cmd_exec(
+        [
+            "ffprobe",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-print_format",
+            "json",
+            "-show_streams",
+            path,
+        ]
+    )
+    if result[2] != 0:
+        LOGGER.error(f"Error getting stream info for {path}: {result[1]}")
+        return None
+    try:
+        return loads(result[0]).get("streams", [])
+    except Exception as error:
+        LOGGER.error(f"Invalid ffprobe stream output for {path}: {error}")
+        return None
 
 
 async def get_document_type(path):
@@ -101,7 +215,7 @@ async def get_document_type(path):
             is_video = True
         return is_video, is_audio, is_image
     if result[0] and result[2] == 0:
-        fields = eval(result[0]).get("streams")
+        fields = loads(result[0]).get("streams")
         if fields is None:
             LOGGER.error(f"get_document_type: {result}")
             return is_video, is_audio, is_image
